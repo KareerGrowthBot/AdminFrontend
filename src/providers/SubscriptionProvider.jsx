@@ -4,20 +4,27 @@ import { dashboardService } from '../services/dashboardService';
 const SubscriptionContext = createContext();
 
 export const SubscriptionProvider = ({ children, isAuthenticated }) => {
-    const [isSubscriptionActive, setIsSubscriptionActive] = useState(true);
+    const [isSubscriptionActive, setIsSubscriptionActive] = useState(() => {
+        if (typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem('isSubscription');
+            return stored === null ? true : stored === 'true';
+        }
+        return true;
+    });
     const [creditsData, setCreditsData] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
 
-    const fetchCredits = async () => {
+    const fetchCredits = async (force = false) => {
         // Skip fetching if not authenticated or no organizationId
         const organizationId = typeof localStorage !== 'undefined' ? localStorage.getItem('organizationId') : null;
 
         if (!organizationId) {
-            // Not logged in or no organization linked - set defaults
-            // Only log if we are authenticated but missing ID (unexpected state)
-            if (isAuthenticated) {
-                console.warn('SubscriptionProvider: Authenticated but no organizationId found in localStorage');
-            }
+            setLoading(false);
+            return;
+        }
+
+        // If not forcing a refresh, and we already have a subscription status, we can skip the backend call
+        if (!force && typeof localStorage !== 'undefined' && localStorage.getItem('isSubscription') !== null) {
             setLoading(false);
             return;
         }

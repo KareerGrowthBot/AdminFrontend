@@ -67,8 +67,8 @@ const App = () => {
               }
 
               // Store organizationId and dbName from admin object
-              const organizationId = admin?.organization?.organizationId || null;
-              const dbName = admin?.organization?.dbName || null;
+              const organizationId = admin?.organizationId || admin?.organization?.organizationId || null;
+              const dbName = admin?.dbName || admin?.organization?.dbName || null;
 
               if (organizationId) {
                 localStorage.setItem('organizationId', organizationId);
@@ -221,8 +221,8 @@ const App = () => {
             localStorage.setItem('roleId', admin.role.id);
           }
 
-          const organizationId = admin?.organization?.organizationId || null;
-          const dbName = admin?.organization?.dbName || null;
+          const organizationId = admin?.organizationId || admin?.organization?.organizationId || null;
+          const dbName = admin?.dbName || admin?.organization?.dbName || null;
           if (organizationId) localStorage.setItem('organizationId', organizationId);
           if (dbName) localStorage.setItem('dbName', dbName);
 

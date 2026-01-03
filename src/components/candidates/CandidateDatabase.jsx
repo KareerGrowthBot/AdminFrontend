@@ -189,13 +189,15 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
   const filterMenuRef = useRef(null);
 
   useEffect(() => {
-    // Load admin info first to get organizationId
-    const loadAdminInfo = async () => {
+    // Load admin info from localStorage instead of hitting backend
+    const loadAdminInfo = () => {
       try {
-        const admin = await authService.getCurrentAdmin();
-        setAdminInfo(admin);
+        const adminStr = localStorage.getItem('adminInfo');
+        if (adminStr) {
+          setAdminInfo(JSON.parse(adminStr));
+        }
       } catch (error) {
-        console.error("Error loading admin info:", error);
+        console.error("Error loading admin info from localStorage:", error);
       }
     };
 
