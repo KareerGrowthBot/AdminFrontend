@@ -1,6 +1,6 @@
-export const API_BASE_URL = "http://localhost:8086";
-export const AI_BACKEND_URL = "http://localhost:8087";
-export const AI_BACKEND_WS_URL = "ws://localhost:8087";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/admin-backend";
+export const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || "http://localhost:8000/api/ai-service";
+export const AI_BACKEND_WS_URL = import.meta.env.VITE_AI_BACKEND_WS_URL || "ws://localhost:8000/api/ai-service";
 
 export const API_ENDPOINTS = {
   // Auth endpoints
