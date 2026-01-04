@@ -93,6 +93,18 @@ export const adminService = {
     const encodedId = encodeURIComponent(id);
     const response = await apiClient.get(`/api/admins/${encodedId}/role`);
     return response.data;
+  },
+
+  /**
+   * Create a new user for an organization
+   * @param {string} organizationId
+   * @param {Object} payload - {email, password, fullName, roleId, phone}
+   * @returns {Promise<{message: string, user: object}>}
+   */
+  createUserForOrganization: async (organizationId, payload) => {
+    const encodedId = encodeURIComponent(organizationId);
+    const response = await apiClient.post(`${API_ENDPOINTS.GET_USERS_BY_ORGANIZATION}/${encodedId}/users`, payload);
+    return response.data;
   }
 };
 

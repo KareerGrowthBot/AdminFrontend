@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, LogOut, ChevronLeft, ChevronRight, Menu, Bell, Lock } from "lucide-react";
+import { ChevronDown, LogOut, ChevronLeft, ChevronRight, Menu, Bell, Lock, Receipt } from "lucide-react";
 import { useSubscription } from "../../providers/SubscriptionProvider";
 
-const Layout = ({ children, email, role, onLogout, menuItems = [] }) => {
+const Layout = ({ children, email, fullName, role, onLogout, menuItems = [] }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const [expandedItems, setExpandedItems] = useState({});
@@ -115,8 +115,8 @@ const Layout = ({ children, email, role, onLogout, menuItems = [] }) => {
                                 {email?.[0]?.toUpperCase() || "A"}
                             </div>
                             <div className="text-left hidden md:block">
-                                <p className="text-[11px] font-bold text-slate-900 leading-none mb-1">{email?.split('@')[0] || "Admin"}</p>
-                                <p className="text-[9px] font-bold text-blue-500 uppercase tracking-wider leading-none">Super User</p>
+                                <p className="text-[11px] font-bold text-slate-900 leading-none mb-1">{fullName || email?.split('@')[0] || "Admin"}</p>
+                                <p className="text-[9px] font-bold text-blue-500 uppercase tracking-wider leading-none">{typeof role === 'object' ? role.name : (role || "User")}</p>
                             </div>
                             <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
@@ -124,13 +124,9 @@ const Layout = ({ children, email, role, onLogout, menuItems = [] }) => {
                             <>
                                 <div className="fixed inset-0 z-40" onClick={() => setIsProfileDropdownOpen(false)} />
                                 <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-100 shadow-xl rounded-xl p-2 z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                                    <div className="p-3 bg-slate-50 rounded-lg mb-1.5">
-                                        <p className="text-xs font-bold text-slate-900 truncate mb-0.5">{email}</p>
-                                        <p className="text-[10px] font-medium text-slate-500 truncate lowercase">{typeof role === 'object' ? role.name : role}</p>
-                                    </div>
                                     <div className="space-y-1">
-                                        <button className="w-full flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-all text-xs font-semibold">
-                                            <Lock size={14} /> Security Settings
+                                        <button onClick={() => { setIsProfileDropdownOpen(false); navigate('/dashboard/billing'); }} className="w-full flex items-center gap-3 px-3 py-2 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-all text-xs font-semibold">
+                                            <Receipt size={14} /> Billing
                                         </button>
                                         <div className="h-[1px] bg-slate-100 my-1 mx-2"></div>
                                         <button onClick={() => { setIsProfileDropdownOpen(false); onLogout(); }} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg transition-all text-xs font-bold">

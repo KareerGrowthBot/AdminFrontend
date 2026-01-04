@@ -13,6 +13,8 @@ import { setSessionCheckFlag } from "./config/axiosConfig";
 import { hasPermission } from "./utils/permissions";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SubscriptionProvider } from "./providers/SubscriptionProvider";
+import CreateUser from "./components/users/CreateUser";
+import CreateRole from "./components/users/CreateRole";
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -380,7 +382,7 @@ const App = () => {
           </Router>
         </SubscriptionProvider>
       </ThemeProvider>
-    </ErrorBoundary>
+    </ErrorBoundary >
   );
 };
 

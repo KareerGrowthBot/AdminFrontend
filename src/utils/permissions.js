@@ -33,16 +33,18 @@ export const getPermissionsForFeature = (featureName) => {
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       return [];
     }
-    
+
+    if (!featureName) return [];
+
     // First try FeaturesPermissions array
     const allPermissions = getAllPermissions();
     const feature = allPermissions.find(
-      (p) => p.featureName?.toUpperCase() === featureName.toUpperCase()
+      (p) => p && p.featureName && typeof p.featureName === 'string' && p.featureName.toUpperCase() === featureName.toUpperCase()
     );
     if (feature?.permissionScopes) {
       return feature.permissionScopes;
     }
-    
+
     // Fallback to individual feature permissions (like frontend_admin)
     const featureNameLower = featureName.toLowerCase();
     const permissionKeys = [
@@ -50,7 +52,7 @@ export const getPermissionsForFeature = (featureName) => {
       `${featureName}Permissions`,
       `${featureNameLower.slice(0, -1)}Permissions` // Handle plural/singular (e.g., candidate/candidates)
     ];
-    
+
     for (const key of permissionKeys) {
       const permissionsStr = localStorage.getItem(key);
       if (permissionsStr) {
@@ -64,7 +66,7 @@ export const getPermissionsForFeature = (featureName) => {
         }
       }
     }
-    
+
     return [];
   } catch (e) {
     if (e.name === 'SecurityError' || e.message?.includes('storage')) {
@@ -88,15 +90,15 @@ export const hasAnyPermission = (featureName) => {
       const roleName = localStorage.getItem('roleName') || '';
       const roleCode = localStorage.getItem('roleCode') || '';
       const isSystemRole = localStorage.getItem('isSystemRole') === 'true';
-      
+
       // ADMIN and SUPERADMIN have complete access to everything
-      if (roleName === 'ADMIN' || roleName === 'SUPERADMIN' || 
-          roleCode === 'ADMIN' || roleCode === 'SUPERADMIN' ||
-          isSystemRole) {
+      if (roleName === 'ADMIN' || roleName === 'SUPERADMIN' ||
+        roleCode === 'ADMIN' || roleCode === 'SUPERADMIN' ||
+        isSystemRole) {
         return true;
       }
     }
-    
+
     // Check if user has any permission for this feature
     const scopes = getPermissionsForFeature(featureName);
     return scopes && scopes.length > 0;
@@ -119,20 +121,20 @@ export const hasPermission = (featureName, permissionScopes) => {
       const roleName = localStorage.getItem('roleName') || '';
       const roleCode = localStorage.getItem('roleCode') || '';
       const isSystemRole = localStorage.getItem('isSystemRole') === 'true';
-      
+
       // ADMIN and SUPERADMIN have complete access to everything
-      if (roleName === 'ADMIN' || roleName === 'SUPERADMIN' || 
-          roleCode === 'ADMIN' || roleCode === 'SUPERADMIN' ||
-          isSystemRole) {
+      if (roleName === 'ADMIN' || roleName === 'SUPERADMIN' ||
+        roleCode === 'ADMIN' || roleCode === 'SUPERADMIN' ||
+        isSystemRole) {
         return true;
       }
     }
-    
+
     // For other roles, check permissions normally
     const scopes = getPermissionsForFeature(featureName);
     const actionUpper = String(permissionScopes).toUpperCase();
     const featureUpper = String(featureName).toUpperCase();
-    
+
     // Debug logging for permission checks
     if (featureUpper === 'CANDIDATE') {
       console.log('Permission check for CANDIDATE:', {
@@ -142,16 +144,16 @@ export const hasPermission = (featureName, permissionScopes) => {
         allPermissions: getAllPermissions()
       });
     }
-    
+
     // Check if permissions array includes the action (case-insensitive)
     // Also handle WRITE as CREATE for backward compatibility
     const hasPermission = scopes.some(perm => {
       const permUpper = String(perm).toUpperCase();
-      return permUpper === actionUpper || 
-             (actionUpper === 'CREATE' && permUpper === 'WRITE') ||
-             (actionUpper === 'WRITE' && permUpper === 'CREATE');
+      return permUpper === actionUpper ||
+        (actionUpper === 'CREATE' && permUpper === 'WRITE') ||
+        (actionUpper === 'WRITE' && permUpper === 'CREATE');
     });
-    
+
     return hasPermission;
   } catch (error) {
     console.error('Error checking permissions:', error);

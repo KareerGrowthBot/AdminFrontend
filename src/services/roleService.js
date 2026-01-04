@@ -70,6 +70,15 @@ export const roleService = {
     const encodedId = encodeURIComponent(organizationId);
     const response = await apiClient.get(`${API_ENDPOINTS.GET_ROLES_BY_ORGANIZATION}/${encodedId}`);
     return response.data;
+  },
+
+  /**
+   * Get all active features for permissions
+   * @returns {Promise<Array>}
+   */
+  getAllFeatures: async () => {
+    const response = await apiClient.get('/api/features');
+    return response.data;
   }
 };
 

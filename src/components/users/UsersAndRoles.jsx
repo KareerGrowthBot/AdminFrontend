@@ -247,7 +247,7 @@ const UsersAndRoles = ({ adminInfo }) => {
   };
 
   const handleCreateUser = () => {
-    navigate("/dashboard/create-admin");
+    navigate("/dashboard/users/create");
   };
 
   // ... (keeping existing handlers)
@@ -259,7 +259,7 @@ const UsersAndRoles = ({ adminInfo }) => {
 
 
   const handleCreateRole = () => {
-    navigate("/dashboard/create-role");
+    navigate("/dashboard/roles/create");
   };
 
   const handleEditUser = (user) => {

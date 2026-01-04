@@ -758,15 +758,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
           <PermissionWrapper
             feature="CANDIDATE"
             scope="CREATE"
-            fallback={
-              <button
-                onClick={() => navigate('/dashboard/payment')}
-                className="inline-flex items-center gap-x-1.5 rounded-md bg-gold-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-gold-500 transition-all animate-pulse"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Activate to Add</span>
-              </button>
-            }
+            fallback={null}
           >
             <button
               onClick={handleCreate}

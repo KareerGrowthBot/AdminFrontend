@@ -194,26 +194,13 @@ const Topbar = ({ email, role, onMenuClick, onLogout, isMobile, menuItems = [] }
                     <button
                       onClick={() => {
                         setIsProfileDropdownOpen(false);
-                        navigate("/dashboard/users");
+                        navigate("/dashboard/billing");
                       }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-navy-700 hover:text-gold-400 transition-colors border-l-4 border-transparent hover:border-gold-500"
                     >
-                      <Users size={20} className="flex-shrink-0" />
-                      <span className="font-medium">Users</span>
+                      <Receipt size={20} className="flex-shrink-0" />
+                      <span className="font-medium">Billing</span>
                     </button>
-                    {/* Roles Option - Always accessible */}
-                    <button
-                      onClick={() => {
-                        setIsProfileDropdownOpen(false);
-                        navigate("/dashboard/roles");
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left text-white hover:bg-navy-700 hover:text-gold-400 transition-colors border-l-4 border-transparent hover:border-gold-500"
-                    >
-                      <Shield size={20} className="flex-shrink-0" />
-                      <span className="font-medium">Roles</span>
-                    </button>
-                    {/* Divider */}
-                    <div className="border-t border-gold-500/20 my-2"></div>
                     {/* Divider */}
                     <div className="border-t border-gold-500/20 my-2"></div>
                     {/* Logout */}

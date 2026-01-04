@@ -13,7 +13,7 @@ export const questionSetService = {
     if (cached) {
       return cached;
     }
-    
+
     const response = await apiClient.get(endpoint);
     setCachedResponse(endpoint, {}, response.data);
     return response.data;
@@ -26,7 +26,7 @@ export const questionSetService = {
     if (cached) {
       return cached;
     }
-    
+
     const response = await apiClient.get(endpoint);
     setCachedResponse(endpoint, {}, response.data);
     return response.data;
@@ -39,7 +39,20 @@ export const questionSetService = {
     if (cached) {
       return cached;
     }
-    
+
+    const response = await apiClient.get(endpoint);
+    setCachedResponse(endpoint, { positionId }, response.data);
+    return response.data;
+  },
+
+  getQuestionSetDetailsByPositionId: async (positionId) => {
+    const endpoint = `/api/question-sets/position/${positionId}/details`;
+    // Check cache first
+    const cached = getCachedResponse(endpoint, { positionId });
+    if (cached) {
+      return cached;
+    }
+
     const response = await apiClient.get(endpoint);
     setCachedResponse(endpoint, { positionId }, response.data);
     return response.data;

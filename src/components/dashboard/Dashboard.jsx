@@ -7,8 +7,8 @@ import { clearUserInfo } from "../../utils/storageUtils";
 import { hasPermission, hasAnyPermission } from "../../utils/permissions";
 import Layout from "./Layout";
 import DashboardContent from "./DashboardContent";
-import CreateAdmin from "../admin/CreateAdmin";
-import CreateRole from "../role/CreateRole";
+import CreateUser from "../users/CreateUser";
+import CreateRole from "../users/CreateRole";
 import CreateCandidate from "../candidates/CreateCandidate";
 import AddCandidate from "../candidates/AddCandidate";
 import CreatePosition from "../positions/CreatePosition";
@@ -22,6 +22,7 @@ import CandidateDetails from "../candidates/CandidateDetails";
 import Positions from "../positions/Positions";
 import MainDashboard from "./MainDashboard"; // Import MainDashboard
 import Payment from "../payment/Payment";
+import Billing from "../payment/Billing";
 import { useSubscription } from "../../providers/SubscriptionProvider";
 
 const Dashboard = ({ adminInfo, onLogout }) => {
@@ -156,6 +157,18 @@ const Dashboard = ({ adminInfo, onLogout }) => {
     },
   ];
 
+  // Retrieve role name and check if user is Admin
+  const roleName = localStorage.getItem("roleName");
+  const isAdmin = roleName && (roleName.toUpperCase() === "ADMIN" || roleName.toUpperCase() === "SUPERADMIN");
+
+  // Modify "Roles & Users" to require Admin access
+  const allMenuItemsWithAuth = allMenuItems.map(item => {
+    if (item.id === "users") {
+      return { ...item, requiresAdmin: true };
+    }
+    return item;
+  });
+
   // Filter menu items based on user permissions
   // Use useMemo to recalculate when permissions might change
   const menuItems = useMemo(() => {
@@ -172,7 +185,12 @@ const Dashboard = ({ adminInfo, onLogout }) => {
       );
       console.log('Dashboard: CANDIDATE permission found:', candidatePerm);
 
-      return allMenuItems.filter(item => {
+      return allMenuItemsWithAuth.filter(item => {
+        // Check for Admin requirement
+        if (item.requiresAdmin && !isAdmin) {
+          return false;
+        }
+
         // If no permission required, always show (like Dashboard)
         if (!item.requiredPermission) {
           return true;
@@ -211,10 +229,14 @@ const Dashboard = ({ adminInfo, onLogout }) => {
     }
   }, [permissionsLoaded, adminInfo, navigate, refreshKey]);
 
+  // Normalize adminInfo to handle nested admin object
+  const user = adminInfo?.admin || adminInfo || {};
+
   return (
     <Layout
-      email={adminInfo?.email}
-      role={adminInfo?.role}
+      email={user?.email}
+      fullName={user?.fullName}
+      role={user?.role}
       onLogout={handleLogout}
       menuItems={menuItems}
     >
@@ -225,7 +247,7 @@ const Dashboard = ({ adminInfo, onLogout }) => {
         <Route path="/users" element={
           <UsersAndRoles adminInfo={adminInfo} initialTab="users" />
         } />
-        <Route path="/users/create" element={<CreateAdmin adminInfo={adminInfo} />} />
+        <Route path="/users/create" element={<CreateUser adminInfo={adminInfo} />} />
         <Route path="/roles" element={
           <UsersAndRoles adminInfo={adminInfo} initialTab="roles" />
         } />
@@ -240,6 +262,7 @@ const Dashboard = ({ adminInfo, onLogout }) => {
         <Route path="/candidates" element={<Navigate to="/dashboard/test-assignments" replace />} />
         <Route path="/candidates/:id" element={<CandidateDetails adminInfo={adminInfo} />} />
         <Route path="/candidates/create" element={<CreateCandidate adminInfo={adminInfo} />} />
+        <Route path="/billing" element={<Billing />} />
         <Route path="/candidates/add" element={<AddCandidate adminInfo={adminInfo} />} />
         <Route path="/positions" element={
           <Positions />

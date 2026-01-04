@@ -30,6 +30,11 @@ const Positions = () => {
   const [togglingStatus, setTogglingStatus] = useState(false);
   const [activeActionMenu, setActiveActionMenu] = useState(null);
 
+  // Read-only questions modal state
+  const [showQuestionsModal, setShowQuestionsModal] = useState(false);
+  const [questionsList, setQuestionsList] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+
   const isLoadingRef = useRef(false);
   const hasLoadedRef = useRef(false);
 
@@ -185,15 +190,34 @@ const Positions = () => {
     loadData();
   };
 
-  const handleManageQuestions = (positionId) => {
-    const position = Array.isArray(positions) ? positions.find(p => p.id === positionId) : null;
-    navigate("/dashboard/question-sets/create", {
-      state: {
-        positionId: positionId,
-        positionCode: position?.code,
-        positionTitle: position?.title
+  const handleManageQuestions = async (positionId) => {
+    // Check permission - if allowed, navigate to create/manage page
+    if (hasPermission("POSITION", "CREATE")) {
+      const position = Array.isArray(positions) ? positions.find(p => p.id === positionId) : null;
+      navigate("/dashboard/question-sets/create", {
+        state: {
+          positionId: positionId,
+          positionCode: position?.code,
+          positionTitle: position?.title
+        }
+      });
+    } else {
+      // If not allowed, show read-only popup with assigned questions
+      setQuestionsLoading(true);
+      setShowQuestionsModal(true);
+      try {
+        const position = Array.isArray(positions) ? positions.find(p => p.id === positionId) : null;
+        const data = await questionSetService.getQuestionSetDetailsByPositionId(position.id);
+        console.log("Fetched detailed questions:", data);
+        setQuestionsList(data || []);
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+        showMessage("Failed to load assigned questions", "error");
+        setQuestionsList([]);
+      } finally {
+        setQuestionsLoading(false);
       }
-    });
+    }
   };
 
   // Ensure positions is always an array before filtering
@@ -287,17 +311,8 @@ const Positions = () => {
           </button>
 
           <PermissionWrapper
-            feature="POSITION"
             scope="CREATE"
-            fallback={
-              <button
-                onClick={() => navigate('/dashboard/payment')}
-                className="inline-flex items-center gap-x-1.5 rounded-md bg-gold-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-gold-500 shadow-md transition-all animate-pulse"
-              >
-                <Plus className="-ml-0.5 h-4 w-4" aria-hidden="true" />
-                Activate to Add
-              </button>
-            }
+            fallback={null}
           >
             <button
               onClick={handleCreatePosition}
@@ -591,6 +606,192 @@ const Positions = () => {
         severity={snackbar.severity}
         onClose={handleCloseSnackbar}
       />
+
+      {/* Assigned Questions Modal (Read-Only) */}
+      {showQuestionsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[85vh] flex flex-col animate-in fade-in zoom-in duration-200">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-navy-900">Assigned Questions</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Questions assigned to this position</p>
+              </div>
+              <button
+                onClick={() => setShowQuestionsModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5">
+              {questionsLoading ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader className="w-8 h-8 text-blue-600 animate-spin mb-3" />
+                  <p className="text-xs text-gray-500 font-medium">Loading questions...</p>
+                </div>
+              ) : questionsList.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mb-3">
+                    <BookOpen className="text-gray-400" size={24} />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">No Questions Assigned</p>
+                  <p className="text-xs text-gray-500 mt-1 max-w-xs">There are no question sets currently assigned to this position.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {questionsList.map((item, index) => {
+                    const qSet = item.questionSet || item; // Fallback if regular QS
+                    const details = item.questionDetails;
+
+                    return (
+                      <div key={qSet.id || index} className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">
+                              {qSet.questionSetCode || "Question Set"}
+                            </span>
+                            {qSet.isActive && (
+                              <span className="flex items-center gap-1 text-[10px] text-green-600 font-medium bg-green-50 px-1.5 py-0.5 rounded">
+                                <Check size={10} /> Active
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-gray-500 font-mono">
+                            {qSet.totalDuration ? `${qSet.totalDuration} mins` : '-'}
+                          </span>
+                        </div>
+
+                        <div className="p-4 bg-white">
+                          {/* Stats Header */}
+                          <div className="flex gap-4 mb-4 border-b border-gray-100 pb-3">
+                            <div className="text-center px-3 py-1 bg-slate-50 rounded">
+                              <div className="text-[10px] text-slate-400 font-bold uppercase">Total</div>
+                              <div className="text-sm font-bold text-slate-800">{qSet.totalQuestions || 0}</div>
+                            </div>
+                            <div className="text-center px-3 py-1 bg-slate-50 rounded">
+                              <div className="text-[10px] text-slate-400 font-bold uppercase">Coding</div>
+                              <div className="text-sm font-bold text-slate-800">{qSet.codingQuestionsCount || 0}</div>
+                            </div>
+                            <div className="text-center px-3 py-1 bg-slate-50 rounded">
+                              <div className="text-[10px] text-slate-400 font-bold uppercase">Aptitude</div>
+                              <div className="text-sm font-bold text-slate-800">{qSet.aptitudeQuestionsCount || 0}</div>
+                            </div>
+                          </div>
+
+                          {/* Questions Rendering */}
+                          {!details ? (
+                            <div className="text-xs text-gray-400 italic text-center py-2">Details not available</div>
+                          ) : (
+                            <div className="space-y-4">
+                              {/* General Questions */}
+                              {details.generalQuestions?.questions?.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-bold text-navy-800 mb-2 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                    General Questions
+                                  </h4>
+                                  <ul className="space-y-2 pl-2">
+                                    {details.generalQuestions.questions.map((q, idx) => (
+                                      <li key={q.id || idx} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
+                                        <span className="font-mono text-slate-400">{idx + 1}.</span>
+                                        <div className="flex-1">
+                                          <p className="font-medium">{q.question}</p>
+                                          {q.answer && <p className="mt-1 text-slate-500 text-[10px] border-t border-slate-200 pt-1">Default Answer: {q.answer}</p>}
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 whitespace-nowrap">{q.timeToAnswer}m</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Position Specific Questions */}
+                              {details.positionSpecificQuestions?.questions?.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-bold text-navy-800 mb-2 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                    Position Specific
+                                  </h4>
+                                  <ul className="space-y-2 pl-2">
+                                    {details.positionSpecificQuestions.questions.map((q, idx) => (
+                                      <li key={q.id || idx} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 flex gap-2">
+                                        <span className="font-mono text-slate-400">{idx + 1}.</span>
+                                        <div className="flex-1">
+                                          <p className="font-medium">{q.question}</p>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 whitespace-nowrap">{q.timeToAnswer}m</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Coding Questions */}
+                              {details.codingQuestions?.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-bold text-navy-800 mb-2 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                                    Coding Challenges
+                                  </h4>
+                                  <ul className="space-y-2 pl-2">
+                                    {details.codingQuestions.map((q, idx) => (
+                                      <li key={q.id || idx} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
+                                        <div className="flex justify-between items-start mb-1">
+                                          <span className="font-bold text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100">{q.programmingLanguage} ({q.difficultyLevel})</span>
+                                          <span className="text-[10px] text-slate-400">{q.codeDuration}</span>
+                                        </div>
+                                        <p className="font-medium text-slate-700">{q.customCodingQuestion || q.questionSource}</p>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Aptitude Questions */}
+                              {details.aptitudeQuestions?.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-bold text-navy-800 mb-2 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500"></span>
+                                    Aptitude Assessment
+                                  </h4>
+                                  <ul className="space-y-2 pl-2">
+                                    {details.aptitudeQuestions.map((q, idx) => (
+                                      <li key={q.id || idx} className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
+                                        <div className="flex justify-between items-center mb-1">
+                                          <span className="font-semibold text-slate-800">{q.questionSource}</span>
+                                          <span className="text-[10px] text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-100">{q.difficultyLevel}</span>
+                                        </div>
+                                        <div className="flex gap-3 text-[10px] text-slate-500">
+                                          <span>Questions: <b>{q.numberOfQuestions}</b></span>
+                                          <span>Time: <b>{q.timeToAnswer}m</b></span>
+                                        </div>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-lg flex justify-end">
+              <button
+                onClick={() => setShowQuestionsModal(false)}
+                className="px-4 py-2 bg-white border border-gray-300 shadow-sm text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
