@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
     ArrowUpRight, TrendingUp, Users, CheckCircle, Clock, XCircle, AlertCircle,
-    UserCheck, UserX, Wifi, WifiOff, FileText, PlayCircle, PauseCircle, Briefcase
+    UserCheck, UserX, Wifi, WifiOff, FileText, PlayCircle, PauseCircle, Briefcase, Calendar
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { dashboardService } from '../../services/dashboardService';
@@ -210,7 +210,7 @@ const MainDashboard = ({ adminInfo }) => {
     }, [dropdownRef]);
 
 
-    const formattedExpiryDate = formatExpiryDate(creditsData?.validTill);
+    const formattedExpiryDate = formatExpiryDate(dashboardStats?.validTill || creditsData?.validTill);
 
     const selectedPosition = jobRoles.find(role => role.id === selectedPositionId);
 
@@ -398,22 +398,24 @@ const MainDashboard = ({ adminInfo }) => {
     };
 
     return (
-        <div className="bg-gradient-to-br from-gray-50 to-white p-6 min-h-screen">
-            <div className="flex justify-between items-center mb-8">
+        <div className="space-y-6 animate-in fade-in duration-700">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-[#163D88] mb-2">Dashboard Analytics</h1>
-                    <p className="text-gray-600">Monitor your interview performance and candidate recommendations</p>
+                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Dashboard Analytics</h1>
+                    <p className="text-sm font-medium text-slate-500 mt-1">Monitor your interview performance and candidate recommendations</p>
                 </div>
-                <button
-                    className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleDownloadReport}
-                    disabled={
-                        creditsLoading || creditsError || !creditsData
-                    }
-                >
-                    <span>Download Report</span>
-                    <Users size={16} /> {/* Fallback icon, original was SVG */}
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-2 text-sm rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handleDownloadReport}
+                        disabled={
+                            creditsLoading || creditsError || !creditsData
+                        }
+                    >
+                        <span>Download Report</span>
+                        <Users size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* Credits Section - Always Visible */}
@@ -425,109 +427,158 @@ const MainDashboard = ({ adminInfo }) => {
                 <div className="mb-4 text-sm text-red-500">Error loading credits. Showing cached or default values.</div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <p className="text-xs font-bold text-gray-600 mb-1">TOTAL INTERVIEW CREDITS</p>
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{creditsData?.totalInterviewCredits ?? '-'}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.totalInterviewCredits ?? '-'}</h2>
                         <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
-                <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <p className="text-xs font-bold text-gray-600 mb-1">UTILIZED CREDITS</p>
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{creditsData?.utilizedInterviewCredits ?? '-'}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.utilizedInterviewCredits ?? '-'}</h2>
                         <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
-                <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <p className="text-xs font-bold text-gray-600 mb-1">REMAINING CREDITS</p>
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{creditsData?.remainingInterviewCredits ?? '-'}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.remainingInterviewCredits ?? '-'}</h2>
                         <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
-                <div className="col-span-1 row-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col justify-center">
+                <div className="row-span-2 bg-white border border-gray-200 rounded-lg p-4 shadow-sm flex flex-col relative">
+                    <div className="absolute top-4 right-4">
+                        <Calendar className="text-green-500" size={20} />
+                    </div>
+                    <p className="text-xs font-bold text-gray-600 mb-1">VALID TILL</p>
+
                     {formattedExpiryDate ? (
-                        <>
-                            <p className="text-xs font-bold text-gray-600 mb-1 text-center">VALID TILL</p>
-                            <div className="flex flex-col items-center justify-center h-full">
-                                <h2 className="text-5xl font-bold text-gray-900 leading-none">
-                                    {formattedExpiryDate.day}<sup className="text-lg align-super">{formattedExpiryDate.suffix}</sup>
-                                </h2>
-                                <p className="text-3xl font-bold text-gray-900 mt-1">{formattedExpiryDate.month} {formattedExpiryDate.year}</p>
-                            </div>
-                        </>
+                        <div className="flex flex-col justify-center flex-grow">
+                            <h2 className="text-4xl font-bold text-gray-900 leading-none">
+                                {formattedExpiryDate.day}<sup className="text-lg align-super">{formattedExpiryDate.suffix}</sup>
+                            </h2>
+                            <p className="text-2xl font-bold text-gray-500 mt-2">{formattedExpiryDate.month} {formattedExpiryDate.year}</p>
+                        </div>
                     ) : (
-                        <p className="text-center text-gray-500">Expiry date not available</p>
+                        <div className="flex flex-col justify-center flex-grow">
+                            <p className="text-gray-500">Expiry date not available</p>
+                        </div>
                     )}
                 </div>
-                <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <p className="text-xs font-bold text-gray-600 mb-1">TOTAL POSITION CREDITS</p>
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{creditsData?.totalPositionCredits ?? '-'}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.totalPositionCredits ?? '-'}</h2>
                         <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
-                <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <p className="text-xs font-bold text-gray-600 mb-1">UTILIZED CREDITS</p>
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{creditsData?.utilizedPositionCredits ?? '-'}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.utilizedPositionCredits ?? '-'}</h2>
                         <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
-                <div className="col-span-1 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                     <p className="text-xs font-bold text-gray-600 mb-1">REMAINING CREDITS</p>
                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-gray-900">{creditsData?.remainingPositionCredits ?? '-'}</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.remainingPositionCredits ?? '-'}</h2>
                         <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
             </div>
 
             {/* General Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-blue-100 rounded-full">
-                            <Users className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <span className="text-xs font-semibold uppercase text-gray-500 bg-gray-50 px-2 py-1 rounded-full">Total Candidates</span>
-                    </div>
-                    <div className="flex items-end justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                {/* Candidates Stats */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">TOTAL CANDIDATES</p>
+                    <div className="flex justify-between items-center">
                         <div>
-                            <h3 className="text-2xl font-bold text-gray-900">{dashboardStats?.totalCandidates || 0}</h3>
-                            <p className="text-sm text-gray-500 mt-1">Across all jobs</p>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.totalCandidates || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Across all jobs</p>
                         </div>
+                        <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-purple-100 rounded-full">
-                            <UserCheck className="w-6 h-6 text-purple-600" />
-                        </div>
-                        <span className="text-xs font-semibold uppercase text-gray-500 bg-gray-50 px-2 py-1 rounded-full">Total Users</span>
-                    </div>
-                    <div className="flex items-end justify-between">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">ACTIVE CANDIDATES</p>
+                    <div className="flex justify-between items-center">
                         <div>
-                            <h3 className="text-2xl font-bold text-gray-900">{dashboardStats?.totalUsers || 0}</h3>
-                            <p className="text-sm text-gray-500 mt-1">Active system users</p>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.activeCandidates || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Currently active</p>
                         </div>
+                        <ArrowUpRight className="text-green-500" size={20} />
                     </div>
                 </div>
 
-                <div className="bg-white rounded-lg p-5 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="p-2 bg-green-100 rounded-full">
-                            <Briefcase className="w-6 h-6 text-green-600" />
-                        </div>
-                        <span className="text-xs font-semibold uppercase text-gray-500 bg-gray-50 px-2 py-1 rounded-full">Active Jobs</span>
-                    </div>
-                    <div className="flex items-end justify-between">
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">INACTIVE CANDIDATES</p>
+                    <div className="flex justify-between items-center">
                         <div>
-                            <h3 className="text-2xl font-bold text-gray-900">{dashboardStats?.activePositions || 0}</h3>
-                            <p className="text-sm text-gray-500 mt-1">Currently open positions</p>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.inactiveCandidates || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Inactive / Archived</p>
                         </div>
+                        <ArrowUpRight className="text-gray-400" size={20} />
+                    </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">ACTIVE USERS</p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.activeUsers || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Online recently</p>
+                        </div>
+                        <ArrowUpRight className="text-green-500" size={20} />
+                    </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">INACTIVE USERS</p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.inactiveUsers || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">No recent activity</p>
+                        </div>
+                        <ArrowUpRight className="text-gray-400" size={20} />
+                    </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">TOTAL ROLES</p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.totalRoles || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Defined roles</p>
+                        </div>
+                        <ArrowUpRight className="text-green-500" size={20} />
+                    </div>
+                </div>
+
+                {/* Positions Stats */}
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">ACTIVE POSITIONS</p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.activePositions || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Open positions</p>
+                        </div>
+                        <ArrowUpRight className="text-green-500" size={20} />
+                    </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <p className="text-xs font-bold text-gray-600 mb-1">INACTIVE POSITIONS</p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-900">{dashboardStats?.inactivePositions || 0}</h2>
+                            <p className="text-xs text-gray-500 mt-1">Closed positions</p>
+                        </div>
+                        <ArrowUpRight className="text-gray-400" size={20} />
                     </div>
                 </div>
             </div>

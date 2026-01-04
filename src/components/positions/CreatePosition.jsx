@@ -407,9 +407,9 @@ const CreatePosition = ({ adminInfo }) => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+    <div className="min-h-full bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex-shrink-0">
+      <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -424,339 +424,332 @@ const CreatePosition = ({ adminInfo }) => {
         </div>
       </div>
 
-      {/* Main Content - Full Width */}
-      <div className="flex-1 p-3 overflow-hidden">
-        <div className="h-full overflow-hidden">
-          <div className="bg-white rounded-lg shadow-md h-full flex flex-col overflow-hidden">
-            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Title */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Title <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        name="title"
-                        value={formData.title}
-                        onChange={(e) => {
-                          handleChange(e);
-                          setShowTitleDropdown(true);
+      {/* Form Content */}
+      <form onSubmit={handleSubmit}>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Title */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={(e) => {
+                    handleChange(e);
+                    setShowTitleDropdown(true);
+                  }}
+                  onFocus={() => setShowTitleDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowTitleDropdown(false), 200)}
+                  required
+                  placeholder="Select or type a title"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                />
+                {showTitleDropdown && getFilteredTitles(formData.title).length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg" style={{ maxHeight: '104px', overflowY: 'auto' }}>
+                    {getFilteredTitles(formData.title).map((title, index) => (
+                      <div
+                        key={index}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, title }));
+                          setShowTitleDropdown(false);
                         }}
-                        onFocus={() => setShowTitleDropdown(true)}
-                        onBlur={() => setTimeout(() => setShowTitleDropdown(false), 200)}
-                        required
-                        placeholder="Select or type a title"
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      />
-                      {showTitleDropdown && getFilteredTitles(formData.title).length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg" style={{ maxHeight: '104px', overflowY: 'auto' }}>
-                          {getFilteredTitles(formData.title).map((title, index) => (
-                            <div
-                              key={index}
-                              onClick={() => {
-                                setFormData(prev => ({ ...prev, title }));
-                                setShowTitleDropdown(false);
-                              }}
-                              className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                              style={{ minHeight: '26px' }}
-                            >
-                              {title}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Domain Type */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Domain Type <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="domainType"
-                      value={formData.domainType}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    >
-                      <option value="">Select domain</option>
-                      <option value="TECHNICAL">Technical</option>
-                      <option value="NON_TECHNICAL">Non-Technical</option>
-                    </select>
-                  </div>
-
-
-                  {/* Experience Range */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Minimum Experience (years)
-                    </label>
-                    <input
-                      type="number"
-                      name="minimumExperience"
-                      value={formData.minimumExperience}
-                      onChange={handleChange}
-                      min="0"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Maximum Experience (years)
-                    </label>
-                    <input
-                      type="number"
-                      name="maximumExperience"
-                      value={formData.maximumExperience}
-                      onChange={handleChange}
-                      min="0"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                  </div>
-
-                  {/* Number of Positions */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Number of Positions
-                    </label>
-                    <input
-                      type="number"
-                      name="noOfPositions"
-                      value={formData.noOfPositions}
-                      onChange={handleChange}
-                      min="1"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                  </div>
-
-                  {/* Application Deadline */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Application Deadline
-                    </label>
-                    <input
-                      type="date"
-                      name="applicationDeadline"
-                      value={formData.applicationDeadline}
-                      onChange={handleChange}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                  </div>
-
-                  {/* Experience and Skills Section with AI Buttons */}
-                  <div className="md:col-span-2">
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        type="button"
-                        className="px-4 py-2 text-xs font-medium text-white bg-navy-700 hover:bg-navy-800 rounded-lg transition-colors"
+                        className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        style={{ minHeight: '26px' }}
                       >
-                        Custom JD
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleGenerateSkills}
-                        disabled={isGeneratingSkills}
-                        className="px-4 py-2 text-xs font-medium text-white bg-navy-700 hover:bg-navy-800 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
-                      >
-                        {isGeneratingSkills ? (
-                          <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : null}
-                        Generate AI Skills
-                      </button>
-                      {skillsGenerated && (
-                        <button
-                          type="button"
-                          onClick={() => setShowJdSidebar(true)}
-                          className="px-4 py-2 text-xs font-medium text-white bg-navy-700 hover:bg-navy-800 rounded-lg transition-colors flex items-center gap-2"
-                        >
-                          <Sparkles className="h-3 w-3" />
-                          Generate AI JD
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* JD Document Upload */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Job Description Document <span className="text-red-500">*</span>
-                    </label>
-                    <div className="space-y-2">
-                      <input
-                        type="file"
-                        onChange={handleFileSelect}
-                        accept=".pdf,.doc,.docx"
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      />
-                      {(uploading || loading) && (
-                        <div className="text-xs text-gray-600">
-                          {uploading ? `Uploading file... ${uploadProgress}%` : "Creating position..."}
-                        </div>
-                      )}
-                      {selectedFile && (
-                        <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <FileText size={16} className="text-navy-700" />
-                            <span className="text-xs text-gray-700">{selectedFile.name}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleRemoveFile}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Mandatory Skills */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Mandatory Skills <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <div className="flex flex-wrap gap-2 p-1.5 min-h-[38px] border border-gray-300 rounded-lg focus-within:border-gray-400 bg-white">
-                        {formData.mandatorySkills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-navy-100 text-navy-800 rounded text-xs flex items-center gap-1"
-                          >
-                            {skill}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSkill("mandatory", index)}
-                              className="text-navy-600 hover:text-red-600 font-semibold leading-none"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        <input
-                          type="text"
-                          value={skillInput.mandatory}
-                          onChange={(e) => {
-                            setSkillInput({ ...skillInput, mandatory: e.target.value });
-                            setShowMandatoryDropdown(true);
-                          }}
-                          onFocus={() => setShowMandatoryDropdown(true)}
-                          onBlur={() => setTimeout(() => setShowMandatoryDropdown(false), 200)}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddSkill("mandatory");
-                            }
-                          }}
-                          placeholder={formData.mandatorySkills.length === 0 ? "Select or type a skill, then press Enter" : ""}
-                          className="flex-1 min-w-[120px] px-1 py-0.5 text-xs border-0 outline-none bg-transparent"
-                        />
+                        {title}
                       </div>
-                      {showMandatoryDropdown && getFilteredSkills("mandatory", skillInput.mandatory).length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg" style={{ maxHeight: '104px', overflowY: 'auto' }}>
-                          {getFilteredSkills("mandatory", skillInput.mandatory).map((skill, index) => (
-                            <div
-                              key={index}
-                              onClick={() => handleAddSkill("mandatory", skill)}
-                              className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                              style={{ minHeight: '26px' }}
-                            >
-                              {skill}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    ))}
                   </div>
-
-                  {/* Optional Skills */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Optional Skills
-                    </label>
-                    <div className="relative">
-                      <div className="flex flex-wrap gap-2 p-1.5 min-h-[38px] border border-gray-300 rounded-lg focus-within:border-gray-400 bg-white">
-                        {formData.optionalSkills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs flex items-center gap-1"
-                          >
-                            {skill}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSkill("optional", index)}
-                              className="text-gray-600 hover:text-red-600 font-semibold leading-none"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                        <input
-                          type="text"
-                          value={skillInput.optional}
-                          onChange={(e) => {
-                            setSkillInput({ ...skillInput, optional: e.target.value });
-                            setShowOptionalDropdown(true);
-                          }}
-                          onFocus={() => setShowOptionalDropdown(true)}
-                          onBlur={() => setTimeout(() => setShowOptionalDropdown(false), 200)}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddSkill("optional");
-                            }
-                          }}
-                          placeholder={formData.optionalSkills.length === 0 ? "Select or type a skill, then press Enter" : ""}
-                          className="flex-1 min-w-[120px] px-1 py-0.5 text-xs border-0 outline-none bg-transparent"
-                        />
-                      </div>
-                      {showOptionalDropdown && getFilteredSkills("optional", skillInput.optional).length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg" style={{ maxHeight: '104px', overflowY: 'auto' }}>
-                          {getFilteredSkills("optional", skillInput.optional).map((skill, index) => (
-                            <div
-                              key={index}
-                              onClick={() => handleAddSkill("optional", skill)}
-                              className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                              style={{ minHeight: '26px' }}
-                            >
-                              {skill}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
+                )}
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-3 px-3 pb-3 mt-auto border-t border-gray-200 flex-shrink-0">
+            {/* Domain Type */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Domain Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="domainType"
+                value={formData.domainType}
+                onChange={handleChange}
+                required
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              >
+                <option value="">Select domain</option>
+                <option value="TECHNICAL">Technical</option>
+                <option value="NON_TECHNICAL">Non-Technical</option>
+              </select>
+            </div>
+
+
+            {/* Experience Range */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Minimum Experience (years)
+              </label>
+              <input
+                type="number"
+                name="minimumExperience"
+                value={formData.minimumExperience}
+                onChange={handleChange}
+                min="0"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Maximum Experience (years)
+              </label>
+              <input
+                type="number"
+                name="maximumExperience"
+                value={formData.maximumExperience}
+                onChange={handleChange}
+                min="0"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+            </div>
+
+            {/* Number of Positions */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Number of Positions
+              </label>
+              <input
+                type="number"
+                name="noOfPositions"
+                value={formData.noOfPositions}
+                onChange={handleChange}
+                min="1"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+            </div>
+
+            {/* Application Deadline */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Application Deadline
+              </label>
+              <input
+                type="date"
+                name="applicationDeadline"
+                value={formData.applicationDeadline}
+                onChange={handleChange}
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+            </div>
+
+            {/* Experience and Skills Section with AI Buttons */}
+            <div className="md:col-span-2">
+              <div className="flex gap-2 mb-3">
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  type="button"
+                  className="px-4 py-2 text-xs font-medium text-white bg-qwikBlue hover:bg-qwikBlueDark rounded-lg transition-colors"
                 >
-                  <Save size={16} />
-                  {loading ? "Creating..." : "Create Position"}
+                  Custom JD
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(-1)}
-                  className="px-4 py-2 text-xs border-2 border-gold-300 hover:border-gold-600 text-gold-700 hover:text-gold-600 font-medium rounded-lg transition duration-200"
+                  onClick={handleGenerateSkills}
+                  disabled={isGeneratingSkills}
+                  className="px-4 py-2 text-xs font-medium text-white bg-qwikBlue hover:bg-qwikBlueDark rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                 >
-                  Cancel
+                  {isGeneratingSkills ? (
+                    <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : null}
+                  Generate AI Skills
                 </button>
+                {skillsGenerated && (
+                  <button
+                    type="button"
+                    onClick={() => setShowJdSidebar(true)}
+                    className="px-4 py-2 text-xs font-medium text-white bg-qwikBlue hover:bg-qwikBlueDark rounded-lg transition-colors flex items-center gap-2"
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Generate AI JD
+                  </button>
+                )}
               </div>
-            </form>
+            </div>
+
+            {/* JD Document Upload */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Job Description Document <span className="text-red-500">*</span>
+              </label>
+              <div className="space-y-2">
+                <input
+                  type="file"
+                  onChange={handleFileSelect}
+                  accept=".pdf,.doc,.docx"
+                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                />
+                {(uploading || loading) && (
+                  <div className="text-xs text-gray-600">
+                    {uploading ? `Uploading file... ${uploadProgress}%` : "Creating position..."}
+                  </div>
+                )}
+                {selectedFile && (
+                  <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <FileText size={16} className="text-navy-700" />
+                      <span className="text-xs text-gray-700">{selectedFile.name}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mandatory Skills */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Mandatory Skills <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="flex flex-wrap gap-2 p-1.5 min-h-[38px] border border-gray-300 rounded-lg focus-within:border-gray-400 bg-white">
+                  {formData.mandatorySkills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-navy-100 text-navy-800 rounded text-xs flex items-center gap-1"
+                    >
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill("mandatory", index)}
+                        className="text-navy-600 hover:text-red-600 font-semibold leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    value={skillInput.mandatory}
+                    onChange={(e) => {
+                      setSkillInput({ ...skillInput, mandatory: e.target.value });
+                      setShowMandatoryDropdown(true);
+                    }}
+                    onFocus={() => setShowMandatoryDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowMandatoryDropdown(false), 200)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSkill("mandatory");
+                      }
+                    }}
+                    placeholder={formData.mandatorySkills.length === 0 ? "Select or type a skill, then press Enter" : ""}
+                    className="flex-1 min-w-[120px] px-1 py-0.5 text-xs border-0 outline-none bg-transparent"
+                  />
+                </div>
+                {showMandatoryDropdown && getFilteredSkills("mandatory", skillInput.mandatory).length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg" style={{ maxHeight: '104px', overflowY: 'auto' }}>
+                    {getFilteredSkills("mandatory", skillInput.mandatory).map((skill, index) => (
+                      <div
+                        key={index}
+                        onClick={() => handleAddSkill("mandatory", skill)}
+                        className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        style={{ minHeight: '26px' }}
+                      >
+                        {skill}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Optional Skills */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Optional Skills
+              </label>
+              <div className="relative">
+                <div className="flex flex-wrap gap-2 p-1.5 min-h-[38px] border border-gray-300 rounded-lg focus-within:border-gray-400 bg-white">
+                  {formData.optionalSkills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs flex items-center gap-1"
+                    >
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill("optional", index)}
+                        className="text-gray-600 hover:text-red-600 font-semibold leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    type="text"
+                    value={skillInput.optional}
+                    onChange={(e) => {
+                      setSkillInput({ ...skillInput, optional: e.target.value });
+                      setShowOptionalDropdown(true);
+                    }}
+                    onFocus={() => setShowOptionalDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowOptionalDropdown(false), 200)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddSkill("optional");
+                      }
+                    }}
+                    placeholder={formData.optionalSkills.length === 0 ? "Select or type a skill, then press Enter" : ""}
+                    className="flex-1 min-w-[120px] px-1 py-0.5 text-xs border-0 outline-none bg-transparent"
+                  />
+                </div>
+                {showOptionalDropdown && getFilteredSkills("optional", skillInput.optional).length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg" style={{ maxHeight: '104px', overflowY: 'auto' }}>
+                    {getFilteredSkills("optional", skillInput.optional).map((skill, index) => (
+                      <div
+                        key={index}
+                        onClick={() => handleAddSkill("optional", skill)}
+                        className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        style={{ minHeight: '26px' }}
+                      >
+                        {skill}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
-      </div>
+
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Save size={16} />
+            {loading ? "Creating..." : "Create Position"}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium rounded-lg transition duration-200"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
 
       <SnackbarAlert
         open={snackbar.open}
@@ -777,9 +770,8 @@ const CreatePosition = ({ adminInfo }) => {
         }}
         onUseJd={handleUseJdFromAi}
       />
-    </div>
+    </div >
   );
 };
 
 export default CreatePosition;
-

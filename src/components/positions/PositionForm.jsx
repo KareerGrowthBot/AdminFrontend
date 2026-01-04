@@ -440,13 +440,12 @@ const PositionForm = ({ position, positionTitles: propPositionTitles, onClose })
               </p>
             </div>
 
-            {/* AI Generation Button */}
             <div className="col-span-2">
               <button
                 type="button"
                 onClick={handleGenerateSkills}
                 disabled={isGeneratingSkills}
-                className="px-4 py-2 bg-navy-600 text-white rounded-lg hover:bg-navy-700 disabled:opacity-50 flex items-center gap-2 text-sm"
+                className="px-4 py-2 bg-qwikBlue text-white rounded-lg hover:bg-qwikBlueDark disabled:opacity-50 flex items-center gap-2 text-sm transition-colors"
               >
                 {isGeneratingSkills ? (
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -580,7 +579,7 @@ const PositionForm = ({ position, positionTitles: propPositionTitles, onClose })
               <button
                 type="button"
                 onClick={() => handleAddSkill("optional")}
-                className="px-4 py-2 bg-navy-900 text-white rounded-lg hover:bg-navy-800"
+                className="px-4 py-2 bg-qwikBlue text-white rounded-lg hover:bg-qwikBlueDark transition-colors"
               >
                 Add
               </button>
@@ -609,14 +608,14 @@ const PositionForm = ({ position, positionTitles: propPositionTitles, onClose })
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-6 py-2 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-navy-900 text-white rounded-lg hover:bg-navy-800 flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white rounded-lg flex items-center gap-2 disabled:opacity-50 transition-all shadow-md"
             >
               <Save size={18} />
               {loading ? "Saving..." : position ? "Update" : "Create"}

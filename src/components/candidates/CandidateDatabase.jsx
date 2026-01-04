@@ -787,17 +787,15 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
           <table className="min-w-full border-separate" style={{ borderSpacing: '0 8px' }}>
             <thead className="sticky top-0 z-10 bg-qwikBlue shadow-sm">
               <tr className="rounded-md h-12 mb-4">
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue rounded-l-lg">Candidate Code</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Reg No</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Name</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Mobile</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">College</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Degree / Stream</th>
-                {/* <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Payment</th> */}
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Status</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Last Login</th>
-
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue rounded-r-lg">Action</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-l-lg">Candidate Code</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Reg No</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Name</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Mobile</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">College</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Degree / Stream</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Status</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Last Login</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-r-lg">Action</th>
               </tr>
             </thead>
             <tbody className="bg-transparent">
@@ -824,26 +822,26 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                 currentTableData.map((candidate) => (
                   <tr key={candidate.id || candidate.candidateId} className="bg-white shadow-sm hover:shadow-md transition-shadow group rounded-md">
                     <>
-                      <td className="px-4 py-2 text-gray-900 font-medium text-xs rounded-l-lg border-l border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-gray-900 font-medium text-xs rounded-l-lg border-l border-y border-gray-100">
                         {candidate.code || candidate.candidateCode || "-"}
                       </td>
-                      <td className="px-4 py-2 text-gray-900 font-medium text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-gray-900 font-medium text-xs border-y border-gray-100">
                         {candidate.regNo || 'N/A'}
                       </td>
-                      <td className="px-4 py-2 border-y border-gray-100">
-                        <div className="flex flex-col gap-0.5">
+                      <td className="px-4 py-2 text-center border-y border-gray-100">
+                        <div className="flex flex-col gap-0.5 items-center">
                           <span className="text-gray-900 text-xs font-medium">{candidate.fullName || candidate.name || 'N/A'}</span>
                           <span className="text-blue-600 text-[10px]" title={candidate.email}>{candidate.email}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-gray-600 text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-gray-600 text-xs border-y border-gray-100">
                         {candidate.mobileNumber || candidate.phone || 'N/A'}
                       </td>
-                      <td className="px-4 py-2 text-gray-600 text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-gray-600 text-xs border-y border-gray-100">
                         {candidate.college || candidate.collegeName || 'N/A'}
                       </td>
-                      <td className="px-4 py-2 border-y border-gray-100">
-                        <div className="flex flex-col gap-0.5">
+                      <td className="px-4 py-2 text-center border-y border-gray-100">
+                        <div className="flex flex-col gap-0.5 items-center">
                           <span className="text-gray-600 text-xs">
                             {candidate.degree && candidate.stream ? `${candidate.degree} - ${candidate.stream}` : (candidate.degree || candidate.stream || 'N/A')}
                           </span>
@@ -863,16 +861,16 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                         </span>
                       </td>
                       */}
-                      <td className="px-4 py-2 text-left border-y border-gray-100">
+                      <td className="px-4 py-2 text-center border-y border-gray-100">
                         <span className={`${getStatusBadgeClasses(candidate.status)} px-3 py-1`}>
                           {(candidate.status || 'PENDING').toUpperCase() === 'NOT REGISTERED' ? 'INVITED' : (candidate.status || 'PENDING').replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-left text-gray-600 whitespace-nowrap text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap text-xs border-y border-gray-100">
                         {formatDateTime(candidate.lastLogin)}
                       </td>
-                      <td className="px-4 py-2 text-left rounded-r-lg border-r border-y border-gray-100">
-                        <div className="relative flex justify-start" ref={el => menuRefs.current[candidate.id] = el}>
+                      <td className="px-4 py-2 text-center rounded-r-lg border-r border-y border-gray-100">
+                        <div className="relative flex justify-center" ref={el => menuRefs.current[candidate.id] = el}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

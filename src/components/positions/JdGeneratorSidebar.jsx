@@ -135,7 +135,7 @@ const JdGeneratorSidebar = ({ isOpen, onClose, inputData, onUseJd }) => {
                     )}
                 </div>
                 <textarea
-                    className="flex-1 w-full border rounded-lg p-4 font-mono text-sm leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none overflow-auto"
+                    className="flex-1 w-full border rounded-lg p-4 font-mono text-xs leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none overflow-auto"
                     value={jdContent}
                     onChange={(e) => setJdContent(e.target.value)}
                     placeholder="AI will generate the job description here..."

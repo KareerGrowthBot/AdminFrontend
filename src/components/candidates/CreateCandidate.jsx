@@ -589,7 +589,7 @@ const CreateCandidate = ({ adminInfo }) => {
         try {
           const uploadResponse = await fileService.uploadFile(selectedFile, "resumes");
           resumePath = uploadResponse.path || uploadResponse.filePath;
-          resumeFileName = uploadResponse.fileName || uploadResponse.originalFileName || selectedFile.name;
+          resumeFileName = uploadResponse.originalFileName || selectedFile.name || uploadResponse.fileName;
         } catch (uploadError) {
           console.error("Error uploading resume:", uploadError);
           showMessage("Failed to upload resume. Please try again.", "error");
@@ -647,18 +647,18 @@ const CreateCandidate = ({ adminInfo }) => {
   const filteredQuestionSets = questionSets.filter(qs => qs.positionId === formData.positionId);
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden relative">
+    <div className="min-h-full bg-white relative">
       {/* Fixed Search Button - Right Edge */}
       <button
         onClick={() => setSidebarOpen(true)}
-        className="fixed right-0 top-24 px-4 py-2.5 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 text-white rounded-l-lg hover:from-yellow-500 hover:via-yellow-600 hover:to-yellow-700 flex items-center gap-2 shadow-lg z-40 transition-all"
+        className="fixed right-0 top-24 px-4 py-2.5 bg-gradient-to-br from-blue-600 to-qwikBlue text-white rounded-l-lg hover:from-blue-700 hover:to-qwikBlueDark flex items-center gap-2 shadow-lg z-40 transition-all"
       >
         <Search size={18} />
         <span className="font-medium">Search</span>
       </button>
 
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex-shrink-0">
+      <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -673,325 +673,312 @@ const CreateCandidate = ({ adminInfo }) => {
         </div>
       </div>
 
-      {/* Main Content - Full Width */}
-      <div className="flex-1 p-3 overflow-hidden">
-        <div className="h-full overflow-hidden">
-          <div className="bg-white rounded-lg shadow-md h-full flex flex-col overflow-hidden">
-            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-3">
-                {/* Interview Setup Section - 2 columns per row */}
-                <div className="space-y-3">
-                  {/* Row 1: Select Position and Question Set Code */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Select Position */}
-                    <div>
-                      <label className="block text-xs font-medium text-navy-700 mb-1">
-                        Select Position <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="positionId"
-                        value={formData.positionId}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      >
-                        <option value="">Select position</option>
-                        {Array.isArray(positions) && positions.map((position) => (
-                          <option key={position.id} value={position.id}>
-                            {position.title} ({position.code})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Question Set Code */}
-                    <div>
-                      <label className="block text-xs font-medium text-navy-700 mb-1">
-                        Question Set Code <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="questionSetId"
-                        value={formData.questionSetId}
-                        onChange={handleChange}
-                        required
-                        disabled={!formData.positionId}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      >
-                        <option value="">Select question set</option>
-                        {filteredQuestionSets.map((qs) => (
-                          <option key={qs.id} value={qs.id}>
-                            {qs.questionSetCode}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Interview Schedule Type and Link Expires In */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Interview Schedule Type */}
-                    <div>
-                      <label className="block text-xs font-medium text-navy-700 mb-1">
-                        Interview Schedule Type <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="interviewScheduleType"
-                        value={formData.interviewScheduleType}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      >
-                        <option value="LINK_VALIDITY">Link Validity</option>
-                      </select>
-                    </div>
-
-                    {/* Link Expires In */}
-                    <div>
-                      <label className="block text-xs font-medium text-navy-700 mb-1">
-                        Link Expires In (Days) <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="linkExpiresInDays"
-                        value={formData.linkExpiresInDays}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      >
-                        <option value="1">1 Day</option>
-                        <option value="3">3 Day(s)</option>
-                        <option value="7">7 Day(s)</option>
-                        <option value="14">14 Day(s)</option>
-                        <option value="30">30 Day(s)</option>
-                      </select>
-                    </div>
-                  </div>
+      {/* Main Content */}
+      <form onSubmit={handleSubmit}>
+        <div className="p-6">
+          <div>
+            {/* Interview Setup Section - 2 columns per row */}
+            <div className="space-y-3">
+              {/* Row 1: Select Position and Question Set Code */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Select Position */}
+                <div>
+                  <label className="block text-xs font-medium text-navy-700 mb-1">
+                    Select Position <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="positionId"
+                    value={formData.positionId}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                  >
+                    <option value="">Select position</option>
+                    {Array.isArray(positions) && positions.map((position) => (
+                      <option key={position.id} value={position.id}>
+                        {position.title} ({position.code})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Link Type Buttons - Outside box, connected to top border */}
-                <div className="mt-4 flex items-end justify-start">
-                  <div className="flex ml-6">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, linkType: "PRIVATE" }))}
-                      className={`px-3 py-1.5 rounded-tl text-xs font-semibold transition relative ${formData.linkType === "PRIVATE"
-                        ? "bg-gradient-to-r from-gold-500 to-gold-600 border-2 border-gold-600 ring-2 ring-navy-500 text-navy-900 z-10"
-                        : "bg-white border-t border-l border-gray-300 hover:bg-gray-50 text-gray-700 z-0"
-                        }`}
-                    >
-                      Private Link
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, linkType: "PUBLIC" }))}
-                      className={`px-3 py-1.5 rounded-tr text-xs font-semibold transition relative ${formData.linkType === "PUBLIC"
-                        ? "bg-gradient-to-r from-gold-500 to-gold-600 border-2 border-gold-600 ring-2 ring-navy-500 text-navy-900 z-10"
-                        : "bg-white border-t border-r border-gray-300 hover:bg-gray-50 text-gray-700 z-0"
-                        }`}
-                    >
-                      Public Link
-                    </button>
-                  </div>
+                {/* Question Set Code */}
+                <div>
+                  <label className="block text-xs font-medium text-navy-700 mb-1">
+                    Question Set Code <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="questionSetId"
+                    value={formData.questionSetId}
+                    onChange={handleChange}
+                    required
+                    disabled={!formData.positionId}
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select question set</option>
+                    {filteredQuestionSets.map((qs) => (
+                      <option key={qs.id} value={qs.id}>
+                        {qs.questionSetCode}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
-                {/* Candidate Details Box - Complete border outline */}
-                <div className="border border-gray-300 rounded-lg overflow-hidden">
-                  {/* Header */}
-                  <div className="border-b border-gray-300 bg-gray-50 px-3 py-1.5">
-                    <span className="text-xs font-medium text-gray-700">Candidate Details</span>
-                  </div>
-
-                  {/* Candidate Details Fields (for Private Link) */}
-                  {formData.linkType === "PRIVATE" && (
-                    <div className="p-2">
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Candidate Email */}
-                        <div className="mt-3">
-                          <label className="block text-xs font-medium text-navy-700 mb-1">
-                            Candidate Email <span className="text-red-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="email"
-                              name="candidateEmail"
-                              value={formData.candidateEmail}
-                              onChange={handleChange}
-                              onBlur={handleEmailBlur}
-                              required={formData.linkType === "PRIVATE"}
-                              placeholder="Enter candidate email"
-                              className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                            />
-                            {checkingEmail && (
-                              <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
-                                Checking...
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-
-
-                        {/* Candidate Name */}
-                        <div className="mt-3">
-                          <label className="block text-xs font-medium text-navy-700 mb-1">
-                            Candidate Name <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            name="candidateName"
-                            value={formData.candidateName}
-                            onChange={handleChange}
-                            required={formData.linkType === "PRIVATE"}
-                            placeholder="Enter candidate name"
-                            className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                          />
-                        </div>
-
-                        {/* WhatsApp Number */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-medium text-navy-700 mb-1">
-                            WhatsApp Number <span className="text-red-500">*</span>
-                          </label>
-                          <div className="flex gap-2">
-                            <div className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded-lg bg-gray-50">
-                              <span className="text-xs">🇮🇳</span>
-                              <span className="text-xs text-gray-700">+91</span>
-                            </div>
-                            <input
-                              type="tel"
-                              name="whatsappNumber"
-                              value={formData.whatsappNumber}
-                              onChange={handleChange}
-                              required={formData.linkType === "PRIVATE"}
-                              placeholder="10 digit number"
-                              maxLength={10}
-                              className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Candidate Resume */}
-                        <div className="mb-3">
-                          <label className="block text-xs font-medium text-navy-700 mb-1">
-                            Candidate Resume (PDF, Word .docx) {formData.resumeFilePath ? "" : <span className="text-red-500">*</span>}
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <label className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
-                              <input
-                                type="file"
-                                accept=".pdf,.doc,.docx"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                              />
-                              {formData.resumeFilePath ? "Change file" : "Choose file"}
-                            </label>
-                            <span className="text-xs text-gray-500">
-                              {selectedFile ? selectedFile.name : formData.resumeFileName || "No file chosen"}
-                            </span>
-                            {(selectedFile || formData.resumeFilePath) && (
-                              <button
-                                type="button"
-                                onClick={handleRemoveFile}
-                                className="text-red-600 hover:text-red-800 text-xs"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Registration Paid Checkbox */}
-                      <div className="mt-3">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="registrationPaid"
-                            checked={formData.registrationPaid}
-                            onChange={handleChange}
-                            className="h-3.5 w-3.5 text-gold-600 focus:ring-gold-500 border-gray-300 rounded"
-                          />
-                          <span className="text-xs font-medium text-navy-700">Registration Paid</span>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Candidate Not Found Popup */}
-                {showNotFoundPopup && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                      <h3 className="text-lg font-semibold text-navy-900 mb-2">Candidate Not Found</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        The candidate with email <strong>{formData.candidateEmail}</strong> is not in your candidate list.
-                      </p>
-                      <div className="flex gap-3 justify-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNotFoundPopup(false);
-                            setFormData(prev => ({ ...prev, candidateEmail: "" }));
-                          }}
-                          className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNotFoundPopup(false);
-                            navigate("/dashboard/candidates/add", {
-                              state: {
-                                fromTestPortal: true, // Flag to indicate coming from test portal
-                                testPortalData: {
-                                  // Pass all current form data to pre-fill when returning
-                                  positionId: formData.positionId,
-                                  questionSetId: formData.questionSetId,
-                                  interviewScheduleType: formData.interviewScheduleType,
-                                  linkExpiresInDays: formData.linkExpiresInDays,
-                                  linkType: formData.linkType,
-                                  candidateEmail: formData.candidateEmail,
-                                  candidateName: formData.candidateName,
-                                  whatsappNumber: formData.whatsappNumber,
-                                  // semester: formData.semester, // Removed semester from state transmission
-                                  resumeFilePath: formData.resumeFilePath,
-                                  resumeFileName: formData.resumeFileName
-                                }
-                              }
-                            });
-                          }}
-                          className="px-4 py-2 text-xs font-medium text-white bg-gradient-to-r from-gold-500 to-gold-600 rounded-lg hover:from-gold-600 hover:to-gold-700 transition"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-3 px-3 pb-3 mt-auto border-t border-gray-200 flex-shrink-0">
+              {/* Row 2: Interview Schedule Type and Link Expires In */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Interview Schedule Type */}
+                <div>
+                  <label className="block text-xs font-medium text-navy-700 mb-1">
+                    Interview Schedule Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="interviewScheduleType"
+                    value={formData.interviewScheduleType}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                  >
+                    <option value="LINK_VALIDITY">Link Validity</option>
+                  </select>
+                </div>
+
+                {/* Link Expires In */}
+                <div>
+                  <label className="block text-xs font-medium text-navy-700 mb-1">
+                    Link Expires In (Days) <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="linkExpiresInDays"
+                    value={formData.linkExpiresInDays}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                  >
+                    <option value="1">1 Day</option>
+                    <option value="3">3 Day(s)</option>
+                    <option value="7">7 Day(s)</option>
+                    <option value="14">14 Day(s)</option>
+                    <option value="30">30 Day(s)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Link Type Buttons - Outside box, connected to top border */}
+            <div className="mt-4 flex items-end justify-start">
+              <div className="flex ml-6">
                 <button
-                  type="submit"
-                  disabled={loading || uploading}
-                  className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, linkType: "PRIVATE" }))}
+                  className={`px-3 py-1.5 rounded-tl text-xs font-semibold transition relative ${formData.linkType === "PRIVATE"
+                    ? "bg-gradient-to-r from-blue-600 to-qwikBlue border-2 border-blue-600 ring-2 ring-navy-500 text-white z-10"
+                    : "bg-white border-t border-l border-gray-300 hover:bg-gray-50 text-gray-700 z-0"
+                    }`}
                 >
-                  <Save size={16} />
-                  {uploading ? "Uploading..." : loading ? (isEditMode ? "Updating..." : "Adding...") : (isEditMode ? "Update Candidate" : "Add Candidate")}
+                  Private Link
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(-1)}
-                  className="px-4 py-2 text-xs border-2 border-gold-300 hover:border-gold-600 text-gold-700 hover:text-gold-600 font-medium rounded-lg transition duration-200"
+                  onClick={() => setFormData(prev => ({ ...prev, linkType: "PUBLIC" }))}
+                  className={`px-3 py-1.5 rounded-tr text-xs font-semibold transition relative ${formData.linkType === "PUBLIC"
+                    ? "bg-gradient-to-r from-blue-600 to-qwikBlue border-2 border-blue-600 ring-2 ring-navy-500 text-white z-10"
+                    : "bg-white border-t border-r border-gray-300 hover:bg-gray-50 text-gray-700 z-0"
+                    }`}
                 >
-                  Cancel
+                  Public Link
                 </button>
               </div>
-            </form>
+            </div>
+
+            {/* Candidate Details Box - Complete border outline */}
+            <div className="border border-gray-300 rounded-lg overflow-hidden">
+              {/* Header */}
+              <div className="border-b border-gray-300 bg-gray-50 px-3 py-1.5">
+                <span className="text-xs font-medium text-gray-700">Candidate Details</span>
+              </div>
+
+              {/* Candidate Details Fields (for Private Link) */}
+              {formData.linkType === "PRIVATE" && (
+                <div className="p-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Candidate Email */}
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-navy-700 mb-1">
+                        Candidate Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="email"
+                          name="candidateEmail"
+                          value={formData.candidateEmail}
+                          onChange={handleChange}
+                          onBlur={handleEmailBlur}
+                          required={formData.linkType === "PRIVATE"}
+                          placeholder="Enter candidate email"
+                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                        />
+                        {checkingEmail && (
+                          <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">
+                            Checking...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+
+
+                    {/* Candidate Name */}
+                    <div className="mt-3">
+                      <label className="block text-xs font-medium text-navy-700 mb-1">
+                        Candidate Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="candidateName"
+                        value={formData.candidateName}
+                        onChange={handleChange}
+                        required={formData.linkType === "PRIVATE"}
+                        placeholder="Enter candidate name"
+                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                      />
+                    </div>
+
+                    {/* WhatsApp Number */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-navy-700 mb-1">
+                        WhatsApp Number <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <div className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded-lg bg-gray-50">
+                          <span className="text-xs">🇮🇳</span>
+                          <span className="text-xs text-gray-700">+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          name="whatsappNumber"
+                          value={formData.whatsappNumber}
+                          onChange={handleChange}
+                          required={formData.linkType === "PRIVATE"}
+                          placeholder="10 digit number"
+                          maxLength={10}
+                          className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Candidate Resume */}
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-navy-700 mb-1">
+                        Candidate Resume (PDF, Word .docx) {formData.resumeFilePath ? "" : <span className="text-red-500">*</span>}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <label className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                          />
+                          {formData.resumeFilePath ? "Change file" : "Choose file"}
+                        </label>
+                        <span className="text-xs text-gray-500">
+                          {selectedFile ? selectedFile.name : formData.resumeFileName || "No file chosen"}
+                        </span>
+                        {(selectedFile || formData.resumeFilePath) && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveFile}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Registration Paid Checkbox */}
+
+                </div>
+              )}
+            </div>
+
+            {/* Candidate Not Found Popup */}
+            {showNotFoundPopup && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                  <h3 className="text-lg font-semibold text-navy-900 mb-2">Candidate Not Found</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    The candidate with email <strong>{formData.candidateEmail}</strong> is not in your candidate list.
+                  </p>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNotFoundPopup(false);
+                        setFormData(prev => ({ ...prev, candidateEmail: "" }));
+                      }}
+                      className="px-4 py-2 text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNotFoundPopup(false);
+                        navigate("/dashboard/candidates/add", {
+                          state: {
+                            fromTestPortal: true, // Flag to indicate coming from test portal
+                            testPortalData: {
+                              // Pass all current form data to pre-fill when returning
+                              positionId: formData.positionId,
+                              questionSetId: formData.questionSetId,
+                              interviewScheduleType: formData.interviewScheduleType,
+                              linkExpiresInDays: formData.linkExpiresInDays,
+                              linkType: formData.linkType,
+                              candidateEmail: formData.candidateEmail,
+                              candidateName: formData.candidateName,
+                              whatsappNumber: formData.whatsappNumber,
+                              // semester: formData.semester, // Removed semester from state transmission
+                              resumeFilePath: formData.resumeFilePath,
+                              resumeFileName: formData.resumeFileName
+                            }
+                          }
+                        });
+                      }}
+                      className="px-4 py-2 text-xs font-medium text-white bg-gradient-to-r from-gold-500 to-gold-600 rounded-lg hover:from-gold-600 hover:to-gold-700 transition"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Action Buttons */}
         </div>
-      </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            type="submit"
+            disabled={loading || uploading}
+            className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Save size={16} />
+            {uploading ? "Uploading..." : loading ? (isEditMode ? "Updating..." : "Adding...") : (isEditMode ? "Update Candidate" : "Add Candidate")}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium rounded-lg transition duration-200"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
 
       {/* Search Sidebar */}
       {sidebarOpen && (

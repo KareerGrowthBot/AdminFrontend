@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Plus, Edit, Trash2, Search, User, MoreVertical, Eye,
   Upload, Download, X, RefreshCw, FileText, Video, Send,
-  Filter, AlertTriangle, ChevronDown
+  Filter, AlertTriangle, ChevronDown, ClipboardList
 } from "lucide-react";
 import { candidateService } from "../../services/candidateService";
 import { positionService } from "../../services/positionService";
@@ -95,12 +95,12 @@ const ResumeScoreCircular = ({ score }) => {
 
 const getStatusBadgeClasses = (status) => {
   const normalizedStatus = (status || "PENDING").toUpperCase().replace('_', ' ');
-  let baseClasses = "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset";
+  let baseClasses = "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset whitespace-nowrap";
 
   if (normalizedStatus === 'RECOMMENDED') {
     return `${baseClasses} bg-green-50 text-green-700 ring-green-600/20`;
   }
-  if (normalizedStatus === 'NOT RECOMMENDED') {
+  if (normalizedStatus === 'NOT RECOMMENDED' || normalizedStatus === 'REJECTED') {
     return `${baseClasses} bg-red-50 text-red-700 ring-red-600/20`;
   }
   if (normalizedStatus === 'CAUTIOUSLY RECOMMENDED') {
@@ -132,6 +132,19 @@ const getStatusBadgeClasses = (status) => {
   }
 
   return `${baseClasses} bg-gray-100 text-gray-600 ring-gray-500/20`;
+};
+
+const formatStatusLabel = (status) => {
+  const s = (status || 'PENDING').toUpperCase();
+  if (s === 'INVITED') return 'Invited';
+  if (s === 'MANUALLY_INVITED' || s === 'MANUALLY INVITED') return 'Manual Invited';
+  if (s === 'CAUTIOUSLY_RECOMMENDED' || s === 'CAUTIOUSLY RECOMMENDED') return 'Caurshlu_Recommanded';
+  if (s === 'NOT_RECOMMENDED' || s === 'NOT RECOMMENDED') return 'Rejected';
+  if (s === 'RECOMMENDED') return 'Recommended';
+  if (s === 'TEST_COMPLETED' || s === 'TEST COMPLETED') return 'Test Completed';
+  if (s === 'PENDING') return 'Pending';
+  if (s === 'IN_PROGRESS' || s === 'IN PROGRESS') return 'In Progress';
+  return s.replace('_', ' ');
 };
 
 const formatDateTime = (dateString) => {
@@ -751,20 +764,21 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
           <table className="min-w-full border-separate" style={{ borderSpacing: '0 8px' }}>
             <thead className="sticky top-0 z-10 bg-qwikBlue shadow-sm">
               <tr className="rounded-md h-12 mb-4">
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue rounded-l-lg">Candidate ID</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Candidate Name</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Job Title</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Position Code</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Invited Date</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Resume Score</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue">Status</th>
-                <th scope="col" className="px-6 py-2.5 text-left text-xs font-semibold text-white bg-qwikBlue rounded-r-lg">Actions</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-l-lg whitespace-nowrap">CANCODE</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">NAME</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">EMAIL</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">JOB TITLE</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">POSCODE</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">INVITED</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">RESUME SCORE</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">STATUS</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-r-lg whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="bg-transparent">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-20 text-center text-gray-500 bg-white rounded-lg shadow-sm">
+                  <td colSpan="9" className="py-20 text-center text-gray-500 bg-white rounded-lg shadow-sm">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <RefreshCw className="h-6 w-6 animate-spin text-blue-500" />
                       <span>Loading candidates...</span>
@@ -773,7 +787,7 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                 </tr>
               ) : currentTableData.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-20 text-center text-gray-500 bg-white rounded-lg shadow-sm">
+                  <td colSpan="9" className="py-20 text-center text-gray-500 bg-white rounded-lg shadow-sm">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <Search className="h-8 w-8 text-gray-300" />
                       <span className="font-medium">No candidates found</span>
@@ -785,42 +799,121 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                 currentTableData.map((candidate) => (
                   <tr key={candidate.id || candidate.candidateId} className="bg-white shadow-sm hover:shadow-md transition-shadow group rounded-md">
                     <>
-                      <td className="px-4 py-2 text-gray-900 font-medium text-xs rounded-l-lg border-l border-y border-gray-100">
-                        #{candidate.candidateCode || (candidate.id ? String(candidate.id).substring(0, 8) : 'N/A')}
+                      <td className="px-4 py-2 text-center text-slate-900 font-medium text-xs rounded-l-lg border-l border-y border-gray-100">
+                        {candidate.code || candidate.candidateCode || (candidate.id ? String(candidate.id).substring(0, 8) : 'N/A')}
                       </td>
-                      <td className="px-4 py-2 text-sm border-y border-gray-100">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-gray-900 font-medium">{candidate.candidateName || candidate.fullName || candidate.name || 'N/A'}</span>
+                      <td className="px-4 py-2 text-center text-xs border-y border-gray-100">
+                        <div className="flex flex-col gap-0.5 items-center">
+                          <span className="text-slate-900 font-medium">{candidate.candidateName || candidate.fullName || candidate.name || 'N/A'}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-gray-700 text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-xs border-y border-gray-100">
+                        <div className="flex flex-col gap-0.5 items-center">
+                          <span className="text-slate-900 font-medium">{candidate.email || 'N/A'}</span>
+                          <span className="text-slate-500 text-[10px]">{candidate.regNo || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 text-center text-slate-900 font-medium text-xs border-y border-gray-100">
                         {candidate.positionTitle || getPositionTitle(candidate.positionId) || 'N/A'}
                       </td>
-                      <td className="px-4 py-2 text-gray-700 text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-slate-900 font-medium text-xs border-y border-gray-100">
                         {candidate.positionCode || getPositionCode(candidate.positionId) || 'N/A'}
                       </td>
-                      <td className="px-4 py-2 text-left text-gray-600 whitespace-nowrap text-xs border-y border-gray-100">
+                      <td className="px-4 py-2 text-center text-slate-900 font-medium whitespace-nowrap text-xs border-y border-gray-100">
                         {formatDateTime(candidate.candidateCreatedAt || candidate.createdAt)}
                       </td>
-                      <td className="px-4 py-2 flex justify-start border-y border-gray-100">
+                      <td className="px-4 py-2 flex justify-center border-y border-gray-100">
                         <ResumeScoreCircular score={candidate.resumeMatchScore || candidate.resumeScore} />
                       </td>
-                      <td className="px-4 py-2 text-left border-y border-gray-100">
-                        <span className={`${getStatusBadgeClasses(candidate.recommendationStatus || candidate.status)} px-3 py-1`}>
-                          {(candidate.recommendationStatus || candidate.status || 'PENDING').replace('_', ' ')}
+                      <td className="px-4 py-2 text-center border-y border-gray-100">
+                        <span className={`${getStatusBadgeClasses(candidate.recommendation || candidate.recommendationStatus || candidate.status)} px-3 py-1`}>
+                          {formatStatusLabel(candidate.recommendation || candidate.recommendationStatus || candidate.status)}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-left rounded-r-lg border-r border-y border-gray-100">
-                        <div className="flex items-center justify-start gap-3">
-                          <button onClick={() => handleView(candidate)} title="View Resume" className="text-gray-400 hover:text-blue-600 transition">
-                            <FileText className="h-4 w-4" />
-                          </button>
-                          <button title="View Video" className="text-gray-400 hover:text-blue-600 transition">
+                      <td className="px-4 py-2 text-center rounded-r-lg border-r border-y border-gray-100">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Video recording logic
+                            }}
+                            title="View Recording"
+                            className="text-gray-400 hover:text-blue-600 transition"
+                          >
                             <Video className="h-4 w-4" />
                           </button>
-                          <button onClick={() => handleEdit(candidate)} title="More Options" className="text-gray-400 hover:text-blue-600 transition">
-                            <MoreVertical className="h-4 w-4" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleView(candidate);
+                            }}
+                            title="View Report"
+                            className="text-gray-400 hover:text-blue-600 transition"
+                          >
+                            <ClipboardList className="h-4 w-4" />
                           </button>
+                          <div className="relative flex justify-center" ref={el => menuRefs.current[candidate.id || candidate.candidateId] = el}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const id = candidate.id || candidate.candidateId;
+                                setOpenMenuId(openMenuId === id ? null : id);
+                              }}
+                              title="More Options"
+                              className="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-100 rounded-full focus:outline-none"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+
+                            {openMenuId === (candidate.id || candidate.candidateId) && (
+                              <div className="absolute right-0 mt-8 w-40 bg-white rounded-md shadow-lg z-50 border border-gray-100 py-1 text-left animate-in fade-in zoom-in-95 duration-75">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    handleView(candidate);
+                                  }}
+                                  className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  View profile
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    handleEdit(candidate);
+                                  }}
+                                  className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
+                                >
+                                  <Edit className="h-3.5 w-3.5" />
+                                  Edit
+                                </button>
+                                {(candidate.resumePath || candidate.resumeFilename) && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenMenuId(null);
+                                      const path = candidate.resumePath || candidate.resumeFilename;
+                                      const url = path.startsWith('http') ? path : `/api/resumes/${path}`;
+                                      const filename = path.split('/').pop() || 'Resume';
+                                      const link = document.createElement('a');
+                                      link.href = url;
+                                      link.setAttribute('download', filename);
+                                      link.setAttribute('target', '_blank');
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                    className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2 transition-colors"
+                                  >
+                                    <FileText className="h-3.5 w-3.5" />
+                                    Resume
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </td>
                     </>

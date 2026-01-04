@@ -999,7 +999,7 @@ Good luck with your assessment!`;
           {/* Position Code - Non-editable */}
           <div>
             <label className="block text-xs font-medium text-navy-700 mb-1">
-              Position Code
+              Position Code <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -1013,7 +1013,7 @@ Good luck with your assessment!`;
           {/* Question Set Code - Non-editable */}
           <div>
             <label className="block text-xs font-medium text-navy-700 mb-1">
-              Question Set Code
+              Question Set Code <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -1027,7 +1027,7 @@ Good luck with your assessment!`;
           {/* Interview Type */}
           <div>
             <label className="block text-xs font-medium text-navy-700 mb-1">
-              Interview Type
+              Interview Type <span className="text-red-500">*</span>
             </label>
             <select
               name="interviewMode"
@@ -1044,7 +1044,7 @@ Good luck with your assessment!`;
           {/* Interview Platform */}
           <div>
             <label className="block text-xs font-medium text-navy-700 mb-1">
-              Interview Platform
+              Interview Platform <span className="text-red-500">*</span>
             </label>
             <select
               name="interviewPlatform"
@@ -1059,11 +1059,18 @@ Good luck with your assessment!`;
           {/* Total Timing - Non-editable */}
           <div>
             <label className="block text-xs font-medium text-navy-700 mb-1">
-              Total Timing (min)
+              Total Timing (min) <span className="text-red-500">*</span>
             </label>
             <input
-              type="number"
-              value={calculateTotalDuration() || 0}
+              type="text"
+              value={(() => {
+                const totalMinutes = calculateTotalDuration() || 0;
+                const totalSeconds = totalMinutes * 60;
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = Math.floor(totalSeconds % 60);
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+              })()}
               readOnly
               disabled
               className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
@@ -1074,23 +1081,16 @@ Good luck with your assessment!`;
         {/* 4 Round Boxes */}
         <div className="grid grid-cols-4 gap-3 mt-4">
           {rounds.map((round) => {
-            const colorClasses = {
-              yellow: 'bg-yellow-50 border-yellow-200 hover:border-yellow-400',
-              blue: 'bg-blue-50 border-blue-200 hover:border-blue-400',
-              green: 'bg-green-50 border-green-200 hover:border-green-400',
-              purple: 'bg-purple-50 border-purple-200 hover:border-purple-400'
-            };
-
             return (
               <div key={round.type} className="relative round-dropdown-container">
                 <div
                   onClick={() => handleRoundClick(round.type)}
-                  className={`${colorClasses[round.color]} border - 2 rounded - lg p - 3 cursor - pointer transition ${selectedRound === round.type ? 'ring-2 ring-navy-500' : ''} `}
+                  className={`bg-gray-50 border-2 rounded-lg p-5 cursor-pointer transition min-h-[80px] flex flex-col ${selectedRound === round.type ? 'border-gray-400' : 'border-gray-200 hover:border-gray-400'}`}
                 >
-                  <div className="text-xs font-semibold text-gray-900 mb-1">
+                  <div className="text-base font-semibold text-gray-900 mb-2">
                     {round.label}
                   </div>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-sm text-gray-600">
                     {questions[round.type]?.length || 0} questions
                   </div>
                 </div>
@@ -1903,9 +1903,9 @@ Good luck with your assessment!`;
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+    <div className="min-h-full bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex-shrink-0">
+      <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -1920,45 +1920,39 @@ Good luck with your assessment!`;
         </div>
       </div>
 
-      {/* Main Content - Full Width */}
-      <div className="flex-1 p-3 overflow-hidden">
-        {loadingQuestionSet ? (
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Loading question set...</div>
-            </div>
+      {/* Main Content */}
+      {loadingQuestionSet ? (
+        <div className="flex items-center justify-center p-12">
+          <div className="text-center">
+            <div className="text-sm text-gray-600">Loading question set...</div>
           </div>
-        ) : (
-          <div className="h-full overflow-hidden">
-            <div className="bg-white rounded-lg shadow-md h-full flex flex-col overflow-hidden">
-              <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-3">
-                  {renderAllRounds()}
-                </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div className="p-6">
+            {renderAllRounds()}
+          </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 pt-3 px-3 pb-3 mt-auto border-t border-gray-200 flex-shrink-0">
-                  <button
-                    type="submit"
-                    disabled={loading || !isValidQuestionSet()}
-                    className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <Save size={16} />
-                    {loading ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update Question Set" : "Create Question Set")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="px-4 py-2 text-xs border-2 border-gold-300 hover:border-gold-600 text-gold-700 hover:text-gold-600 font-medium rounded-lg transition duration-200"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
+          {/* Action Buttons */}
+          <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+            <button
+              type="submit"
+              disabled={loading || !isValidQuestionSet()}
+              className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <Save size={16} />
+              {loading ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update Question Set" : "Create Question Set")}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium rounded-lg transition duration-200"
+            >
+              Cancel
+            </button>
           </div>
-        )}
-      </div>
+        </form>
+      )}
 
       <SnackbarAlert
         open={snackbar.open}

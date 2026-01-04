@@ -315,7 +315,7 @@ const AddCandidate = ({ adminInfo }) => {
       try {
         const uploadResponse = await fileService.uploadFile(selectedFile, "resumes");
         resumeStoragePath = uploadResponse.path || uploadResponse.filePath;
-        resumeFilename = uploadResponse.fileName || uploadResponse.originalFileName || selectedFile.name;
+        resumeFilename = uploadResponse.originalFileName || selectedFile.name || uploadResponse.fileName;
       } catch (uploadError) {
         console.error("Error uploading resume:", uploadError);
         showMessage("Failed to upload resume. Please try again.", "error");
@@ -406,9 +406,9 @@ const AddCandidate = ({ adminInfo }) => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+    <div className="min-h-full bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 px-4 py-2 flex-shrink-0">
+      <div className="px-6 py-4 border-b border-gray-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
@@ -418,330 +418,323 @@ const AddCandidate = ({ adminInfo }) => {
           </button>
           <div>
             <h1 className="text-lg font-bold text-navy-900">{location.state?.candidateId ? "Edit Candidate" : "Add Candidate"}</h1>
-            <p className="text-xs text-gray-600 mt-0.5">{location.state?.candidateId ? "Update candidate details" : "Add a new candidate to your organization"}</p>
+            <p className="text-xs text-gray-600 mt-0.5">{location.state?.candidateId ? "Update candidate details" : "Add a new candidate for interview"}</p>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-3 overflow-hidden">
-        <div className="h-full overflow-hidden">
-          {/* Form */}
-          <div className="h-full overflow-hidden">
-            <div className="bg-white rounded-lg shadow-md h-full flex flex-col overflow-hidden">
-              <form onSubmit={handleSubmit} className="flex-1 flex flex-col p-3 overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {/* Email - First field */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        name="email"
-                        required
-                        value={formData.email}
-                        onChange={handleChange}
-                        onBlur={handleEmailBlur}
-                        disabled={checkingEmail}
-                        className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
-                        placeholder="candidate@example.com"
-                      />
-                      {checkingEmail && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-navy-900"></div>
-                        </div>
-                      )}
-                    </div>
-                    {candidateExists && !location.state?.candidate && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        ✓ Candidate found. Details populated. You can update and add them to your organization.
-                      </p>
-                    )}
+      <form onSubmit={handleSubmit}>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Email - First field */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  onBlur={handleEmailBlur}
+                  disabled={checkingEmail}
+                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  placeholder="candidate@example.com"
+                />
+                {checkingEmail && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-navy-900"></div>
                   </div>
+                )}
+              </div>
+              {candidateExists && !location.state?.candidate && (
+                <p className="text-xs text-blue-600 mt-1">
+                  ✓ Candidate found. Details populated. You can update and add them to your organization.
+                </p>
+              )}
+            </div>
 
-                  {/* Name - Second field */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      required
-                      value={formData.name}
-                      onChange={handleChange}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      placeholder="John Doe"
-                    />
-                  </div>
+            {/* Name - Second field */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                required
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                placeholder="John Doe"
+              />
+            </div>
 
-                  {/* Mobile Number */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Mobile Number <span className="text-red-500">*</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded-lg bg-gray-50">
-                        <span className="text-xs">🇮🇳</span>
-                        <span className="text-xs text-gray-700">+91</span>
-                      </div>
-                      <input
-                        type="tel"
-                        name="mobileNumber"
-                        required
-                        value={formData.mobileNumber}
-                        onChange={handleChange}
-                        className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                        placeholder="10 digit number"
-                        maxLength={10}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Registration Number */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Registration Number
-                    </label>
-                    <input
-                      type="text"
-                      name="regNo"
-                      value={formData.regNo}
-                      onChange={handleChange}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      placeholder="Enter registration number"
-                    />
-                  </div>
-
-                  {/* College */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      College
-                    </label>
-                    <input
-                      type="text"
-                      name="college"
-                      value={formData.college}
-                      onChange={handleChange}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      placeholder="Enter college name"
-                    />
-                  </div>
-
-                  {/* Degree */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Degree
-                    </label>
-                    <input
-                      type="text"
-                      name="degree"
-                      value={formData.degree}
-                      onChange={handleDegreeInputChange}
-                      onFocus={() => {
-                        setDegreeDropdownOpen(true);
-                        setDegreeFilter(formData.degree);
-                      }}
-                      onBlur={() => setTimeout(() => setDegreeDropdownOpen(false), 200)}
-                      placeholder="Type or select degree"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                    {degreeDropdownOpen && filteredDegreeOptions.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                        {filteredDegreeOptions.map((option) => (
-                          <div
-                            key={option}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleDegreeSelect(option);
-                            }}
-                            className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
-                          >
-                            {option}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Stream */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Stream
-                    </label>
-                    <input
-                      type="text"
-                      name="stream"
-                      value={formData.stream}
-                      onChange={handleStreamInputChange}
-                      onFocus={() => {
-                        setStreamDropdownOpen(true);
-                        setStreamFilter(formData.stream);
-                      }}
-                      onBlur={() => setTimeout(() => setStreamDropdownOpen(false), 200)}
-                      placeholder="Type or select stream"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                    {streamDropdownOpen && filteredStreamOptions.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                        {filteredStreamOptions.map((option) => (
-                          <div
-                            key={option}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleStreamSelect(option);
-                            }}
-                            className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
-                          >
-                            {option}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Semester */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Semester
-                    </label>
-                    <input
-                      type="text"
-                      name="semester"
-                      value={formData.semester}
-                      onChange={handleSemesterInputChange}
-                      onFocus={() => {
-                        setSemesterDropdownOpen(true);
-                        setSemesterFilter(formData.semester);
-                      }}
-                      onBlur={() => setTimeout(() => setSemesterDropdownOpen(false), 200)}
-                      placeholder="Type or select semester"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                    />
-                    {semesterDropdownOpen && filteredSemesterOptions.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                        {filteredSemesterOptions.map((option) => (
-                          <div
-                            key={option}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              handleSemesterSelect(option);
-                            }}
-                            className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
-                          >
-                            {option}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Academic Year Start */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Academic Year Start <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="academicYearStart"
-                      required
-                      value={formData.academicYearStart}
-                      onChange={handleChange}
-                      min="2000"
-                      max="2100"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      placeholder="e.g., 2024"
-                    />
-                  </div>
-
-                  {/* Academic Year End */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Academic Year End <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      name="academicYearEnd"
-                      required
-                      value={formData.academicYearEnd}
-                      onChange={handleChange}
-                      min="2000"
-                      max="2100"
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
-                      placeholder="e.g., 2025"
-                    />
-                  </div>
-
-                  {/* Resume */}
-                  <div>
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Resume (PDF, Word .docx) {location.state?.candidateId ? <span className="text-gray-500">(Optional)</span> : <span className="text-red-500">*</span>}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <label className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleFileSelect}
-                          className="hidden"
-                        />
-                        Choose file
-                      </label>
-                      <span className="text-xs text-gray-500">
-                        {selectedFile ? selectedFile.name : "No file chosen"}
-                      </span>
-                      {selectedFile && (
-                        <button
-                          type="button"
-                          onClick={handleRemoveFile}
-                          className="text-red-600 hover:text-red-800 text-xs"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Address */}
-                  <div className="md:col-span-2">
-                    <label className="block text-xs font-medium text-navy-700 mb-1">
-                      Address
-                    </label>
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      rows={3}
-                      className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition resize-none"
-                      placeholder="Enter address"
-                    />
-                  </div>
+            {/* Mobile Number */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Mobile Number <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1 px-2 py-1.5 border border-gray-300 rounded-lg bg-gray-50">
+                  <span className="text-xs">🇮🇳</span>
+                  <span className="text-xs text-gray-700">+91</span>
                 </div>
+                <input
+                  type="tel"
+                  name="mobileNumber"
+                  required
+                  value={formData.mobileNumber}
+                  onChange={handleChange}
+                  className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                  placeholder="10 digit number"
+                  maxLength={10}
+                />
+              </div>
+            </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-3 mt-auto border-t border-gray-200 flex-shrink-0">
-                  <button
-                    type="submit"
-                    disabled={loading || uploading}
-                    className="flex-1 py-1.5 px-3 text-xs bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {uploading ? "Uploading..." : loading ? (location.state?.candidateId ? "Updating..." : "Adding Candidate...") : (location.state?.candidateId ? "Update Candidate" : "Add Candidate")}
-                  </button>
+            {/* Registration Number */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Registration Number
+              </label>
+              <input
+                type="text"
+                name="regNo"
+                value={formData.regNo}
+                onChange={handleChange}
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                placeholder="Enter registration number"
+              />
+            </div>
+
+            {/* College */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                College
+              </label>
+              <input
+                type="text"
+                name="college"
+                value={formData.college}
+                onChange={handleChange}
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                placeholder="Enter college name"
+              />
+            </div>
+
+            {/* Degree */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Degree
+              </label>
+              <input
+                type="text"
+                name="degree"
+                value={formData.degree}
+                onChange={handleDegreeInputChange}
+                onFocus={() => {
+                  setDegreeDropdownOpen(true);
+                  setDegreeFilter(formData.degree);
+                }}
+                onBlur={() => setTimeout(() => setDegreeDropdownOpen(false), 200)}
+                placeholder="Type or select degree"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+              {degreeDropdownOpen && filteredDegreeOptions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {filteredDegreeOptions.map((option) => (
+                    <div
+                      key={option}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleDegreeSelect(option);
+                      }}
+                      className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Stream */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Stream
+              </label>
+              <input
+                type="text"
+                name="stream"
+                value={formData.stream}
+                onChange={handleStreamInputChange}
+                onFocus={() => {
+                  setStreamDropdownOpen(true);
+                  setStreamFilter(formData.stream);
+                }}
+                onBlur={() => setTimeout(() => setStreamDropdownOpen(false), 200)}
+                placeholder="Type or select stream"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+              {streamDropdownOpen && filteredStreamOptions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {filteredStreamOptions.map((option) => (
+                    <div
+                      key={option}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleStreamSelect(option);
+                      }}
+                      className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Semester */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Semester
+              </label>
+              <input
+                type="text"
+                name="semester"
+                value={formData.semester}
+                onChange={handleSemesterInputChange}
+                onFocus={() => {
+                  setSemesterDropdownOpen(true);
+                  setSemesterFilter(formData.semester);
+                }}
+                onBlur={() => setTimeout(() => setSemesterDropdownOpen(false), 200)}
+                placeholder="Type or select semester"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+              />
+              {semesterDropdownOpen && filteredSemesterOptions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                  {filteredSemesterOptions.map((option) => (
+                    <div
+                      key={option}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSemesterSelect(option);
+                      }}
+                      className="px-2 py-1.5 text-xs hover:bg-gray-100 cursor-pointer"
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Academic Year Start */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Academic Year Start <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="academicYearStart"
+                required
+                value={formData.academicYearStart}
+                onChange={handleChange}
+                min="2000"
+                max="2100"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                placeholder="e.g., 2024"
+              />
+            </div>
+
+            {/* Academic Year End */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Academic Year End <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="academicYearEnd"
+                required
+                value={formData.academicYearEnd}
+                onChange={handleChange}
+                min="2000"
+                max="2100"
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition"
+                placeholder="e.g., 2025"
+              />
+            </div>
+
+            {/* Resume */}
+            <div>
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Resume (PDF, Word .docx) {location.state?.candidateId ? <span className="text-gray-500">(Optional)</span> : <span className="text-red-500">*</span>}
+              </label>
+              <div className="flex items-center gap-2">
+                <label className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  Choose file
+                </label>
+                <span className="text-xs text-gray-500">
+                  {selectedFile ? selectedFile.name : "No file chosen"}
+                </span>
+                {selectedFile && (
                   <button
                     type="button"
-                    onClick={() => navigate(-1)}
-                    className="px-3 py-1.5 text-xs border-2 border-gold-300 hover:border-gold-600 text-gold-700 hover:text-gold-600 font-medium rounded-lg transition duration-200"
+                    onClick={handleRemoveFile}
+                    className="text-red-600 hover:text-red-800 text-xs"
                   >
-                    Cancel
+                    Remove
                   </button>
-                </div>
-              </form>
+                )}
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-navy-700 mb-1">
+                Address
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                rows={3}
+                className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-gray-400 transition resize-none"
+                placeholder="Enter address"
+              />
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
+          <button
+            type="submit"
+            disabled={loading || uploading}
+            className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? "Uploading..." : loading ? (location.state?.candidateId ? "Updating..." : "Adding Candidate...") : (location.state?.candidateId ? "Update Candidate" : "Add Candidate")}
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 text-xs border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-medium rounded-lg transition duration-200"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
 
       <SnackbarAlert
         open={snackbar.open}
