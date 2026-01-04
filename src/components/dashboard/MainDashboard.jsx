@@ -317,10 +317,9 @@ const MainDashboard = ({ adminInfo }) => {
         return chartDataArray;
     };
 
-    const chartData = formatChartData(recommendationStatsData);
-
-    // Create data for pie chart (only non-zero values)
-    const pieChartData = chartData.filter(item => item.value > 0);
+    // Chart data disabled - recommendation stats removed
+    const chartData = [];
+    const pieChartData = [];
 
     const prepareDetailedStatsData = (statsObject) => {
         if (!statsObject) {
@@ -358,7 +357,8 @@ const MainDashboard = ({ adminInfo }) => {
         return detailedStatsArray;
     };
 
-    const detailedStatsData = prepareDetailedStatsData(recommendationStatsData);
+    // Detailed stats disabled - recommendation stats removed
+    const detailedStatsData = [];
 
     const simpleFormatYTick = (tick) => {
         if (Number.isInteger(tick) && tick >= 0) {
@@ -408,8 +408,7 @@ const MainDashboard = ({ adminInfo }) => {
                     className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleDownloadReport}
                     disabled={
-                        creditsLoading || creditsError || !creditsData ||
-                        recommendationStatsLoading || recommendationStatsError || !recommendationStatsData
+                        creditsLoading || creditsError || !creditsData
                     }
                 >
                     <span>Download Report</span>
@@ -576,183 +575,170 @@ const MainDashboard = ({ adminInfo }) => {
                     </div>
                 </div>
 
-                {/* Charts Section */}
-                {recommendationStatsLoading && !recommendationStatsError ? (
-                    <div className="flex justify-center items-center h-72">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                        <span className="ml-3 text-gray-600">Loading analytics...</span>
+                {/* Charts Section - Disabled (recommendation stats removed) */}
+                <div className="flex justify-center items-center h-72 text-gray-500">
+                    <div className="text-center">
+                        <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <p>Analytics temporarily unavailable</p>
                     </div>
-                ) : recommendationStatsError && !recommendationStatsData ? (
-                    <div className="flex justify-center items-center h-72 text-gray-600">
-                        <div className="text-center">
-                            <XCircle className="mx-auto h-12 w-12 text-red-400 mb-4" />
-                            <p>Error loading chart data.</p>
-                        </div>
-                    </div>
-                ) : selectedPositionId === null ? (
-                    <div className="flex justify-center items-center h-72 text-gray-500">
-                        <div className="text-center">
-                            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                            <p>Please select a position to view analytics.</p>
-                        </div>
-                    </div>
-                ) : (!chartData || chartData.length === 0) ? (
-                    <div className="flex justify-center items-center h-72 text-gray-500">
-                        <div className="text-center">
-                            <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                            <p>No interview data available for this position.</p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-8">
-                        {/* Charts Grid */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Enhanced Bar Chart */}
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <h4 className="text-lg font-semibold text-gray-800 mb-4">Candidate Status Distribution</h4>
+                </div>
+                <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <p>No interview data available for this position.</p>
+            </div>
+        </div>
+    ) : (
+        <div className="space-y-8">
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Enhanced Bar Chart */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Candidate Status Distribution</h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                        <BarChart
+                            data={chartData}
+                            margin={{
+                                top: 20,
+                                right: 30,
+                                left: 20,
+                                bottom: 60,
+                            }}
+                            barCategoryGap="15%"
+                        >
+                            <defs>
+                                {chartData.map((entry, index) => (
+                                    <linearGradient key={index} id={`colorGradient${index}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor={entry.color} stopOpacity={0.8} />
+                                        <stop offset="100%" stopColor={entry.color} stopOpacity={0.4} />
+                                    </linearGradient>
+                                ))}
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                            <XAxis
+                                dataKey="name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }}
+                                angle={-45}
+                                textAnchor="end"
+                                interval={0}
+                                height={80}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tickFormatter={simpleFormatYTick}
+                                domain={[0, 'auto']}
+                                tick={{ fill: '#6b7280', fontSize: 12 }}
+                            />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Bar
+                                dataKey="value"
+                                radius={[4, 4, 0, 0]}
+                                barSize={25}
+                            >
+                                {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={`url(#colorGradient${index})`} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Doughnut Chart */}
+                <div className="bg-white rounded-xl shadow-lg p-6">
+                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Status Overview</h4>
+                    {pieChartData.length > 0 ? (
+                        <div className="flex flex-col lg:flex-row gap-6">
+                            <div className="flex-1">
                                 <ResponsiveContainer width="100%" height={300}>
-                                    <BarChart
-                                        data={chartData}
-                                        margin={{
-                                            top: 20,
-                                            right: 30,
-                                            left: 20,
-                                            bottom: 60,
-                                        }}
-                                        barCategoryGap="15%"
-                                    >
-                                        <defs>
-                                            {chartData.map((entry, index) => (
-                                                <linearGradient key={index} id={`colorGradient${index}`} x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor={entry.color} stopOpacity={0.8} />
-                                                    <stop offset="100%" stopColor={entry.color} stopOpacity={0.4} />
-                                                </linearGradient>
-                                            ))}
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                        <XAxis
-                                            dataKey="name"
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }}
-                                            angle={-45}
-                                            textAnchor="end"
-                                            interval={0}
-                                            height={80}
-                                        />
-                                        <YAxis
-                                            axisLine={false}
-                                            tickLine={false}
-                                            tickFormatter={simpleFormatYTick}
-                                            domain={[0, 'auto']}
-                                            tick={{ fill: '#6b7280', fontSize: 12 }}
-                                        />
-                                        <Tooltip content={<CustomTooltip />} />
-                                        <Bar
+                                    <PieChart>
+                                        <Pie
+                                            data={pieChartData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={5}
                                             dataKey="value"
-                                            radius={[4, 4, 0, 0]}
-                                            barSize={25}
                                         >
-                                            {chartData.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={`url(#colorGradient${index})`} />
+                                            {pieChartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
-                                        </Bar>
-                                    </BarChart>
+                                        </Pie>
+                                        <Tooltip content={<CustomPieTooltip />} />
+                                    </PieChart>
                                 </ResponsiveContainer>
                             </div>
-
-                            {/* Doughnut Chart */}
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <h4 className="text-lg font-semibold text-gray-800 mb-4">Status Overview</h4>
-                                {pieChartData.length > 0 ? (
-                                    <div className="flex flex-col lg:flex-row gap-6">
-                                        <div className="flex-1">
-                                            <ResponsiveContainer width="100%" height={300}>
-                                                <PieChart>
-                                                    <Pie
-                                                        data={pieChartData}
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={60}
-                                                        outerRadius={100}
-                                                        paddingAngle={5}
-                                                        dataKey="value"
-                                                    >
-                                                        {pieChartData.map((entry, index) => (
-                                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                                        ))}
-                                                    </Pie>
-                                                    <Tooltip content={<CustomPieTooltip />} />
-                                                </PieChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                        <div className="flex flex-col justify-center space-y-3 min-w-[200px]">
-                                            {pieChartData.map((item, index) => (
-                                                <div key={index} className="flex items-center space-x-3">
-                                                    <div
-                                                        className="w-4 h-4 rounded-full"
-                                                        style={{ backgroundColor: item.color }}
-                                                    ></div>
-                                                    <span className="text-sm font-medium text-gray-700">{item.name}</span>
-                                                </div>
-                                            ))}
-                                        </div>
+                            <div className="flex flex-col justify-center space-y-3 min-w-[200px]">
+                                {pieChartData.map((item, index) => (
+                                    <div key={index} className="flex items-center space-x-3">
+                                        <div
+                                            className="w-4 h-4 rounded-full"
+                                            style={{ backgroundColor: item.color }}
+                                        ></div>
+                                        <span className="text-sm font-medium text-gray-700">{item.name}</span>
                                     </div>
-                                ) : (
-                                    <div className="flex justify-center items-center h-64 text-gray-500">
-                                        <p>No data to display</p>
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex justify-center items-center h-64 text-gray-500">
+                            <p>No data to display</p>
+                        </div>
+                    )}
+                </div>
             </div>
-
-            {/* Detailed Stats Cards */}
-            {recommendationStatsLoading && !recommendationStatsError ? (
-                <div className="flex justify-center items-center h-48 text-gray-600">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="ml-2">Loading detailed stats...</span>
-                </div>
-            ) : recommendationStatsError && !recommendationStatsData ? (
-                <div className="flex justify-center items-center h-48 text-gray-600">
-                    <p>Error loading detailed stats.</p>
-                </div>
-            ) : selectedPositionId === null ? (
-                <div className="flex justify-center items-center h-48 text-gray-500">
-                    <p>Select a position to view detailed stats.</p>
-                </div>
-            ) : (!recommendationStatsData || Object.keys(recommendationStatsData).length === 0) ? (
-                <div className="flex justify-center items-center h-48 text-gray-500">
-                    <p>No detailed status data available for this position.</p>
-                </div>
-            ) : (
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-6">Detailed Status Breakdown</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {detailedStatsData.map(item => {
-                            const IconComponent = item.colors.icon || Users;
-                            return (
-                                <div key={item.apiKey} className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="p-2 rounded-full" style={{ backgroundColor: item.colors.secondary }}>
-                                            <IconComponent size={16} style={{ color: item.colors.primary }} />
-                                        </div>
-                                        <span className="text-lg font-bold" style={{ color: item.colors.primary }}>
-                                            {item.value}
-                                        </span>
-                                    </div>
-                                    <span className="text-sm font-medium text-gray-700 capitalize">
-                                        {item.label}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
         </div>
+    )
+}
+            </div >
+
+    {/* Detailed Stats Cards */ }
+{
+    recommendationStatsLoading && !recommendationStatsError ? (
+        <div className="flex justify-center items-center h-48 text-gray-600">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2">Loading detailed stats...</span>
+        </div>
+    ) : recommendationStatsError && !recommendationStatsData ? (
+        <div className="flex justify-center items-center h-48 text-gray-600">
+            <p>Error loading detailed stats.</p>
+        </div>
+    ) : selectedPositionId === null ? (
+        <div className="flex justify-center items-center h-48 text-gray-500">
+            <p>Select a position to view detailed stats.</p>
+        </div>
+    ) : (!recommendationStatsData || Object.keys(recommendationStatsData).length === 0) ? (
+        <div className="flex justify-center items-center h-48 text-gray-500">
+            <p>No detailed status data available for this position.</p>
+        </div>
+    ) : (
+    <div className="bg-white rounded-xl shadow-lg p-6">
+        <h3 className="text-xl font-semibold text-gray-800 mb-6">Detailed Status Breakdown</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {detailedStatsData.map(item => {
+                const IconComponent = item.colors.icon || Users;
+                return (
+                    <div key={item.apiKey} className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-all duration-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="p-2 rounded-full" style={{ backgroundColor: item.colors.secondary }}>
+                                <IconComponent size={16} style={{ color: item.colors.primary }} />
+                            </div>
+                            <span className="text-lg font-bold" style={{ color: item.colors.primary }}>
+                                {item.value}
+                            </span>
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 capitalize">
+                            {item.label}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    </div>
+)
+}
+        </div >
     );
 };
 

@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchCredits, fetchJobRoles, fetchPositionRecommendationStats } from './dashboardThunks';
+import { fetchCredits, fetchJobRoles } from './dashboardThunks';
 
 const initialState = {
   credits: {
@@ -12,22 +12,12 @@ const initialState = {
     loading: false,
     error: null,
   },
-  recommendationStats: {
-    data: null,
-    loading: false,
-    error: null,
-  },
 };
 
 const dashboardSlice = createSlice({
   name: 'dashboard',
   initialState,
-  reducers: {
-    resetRecommendationStats: (state) => {
-      state.recommendationStats.data = null;
-      state.recommendationStats.error = null;
-    }
-  },
+  reducers: {},
   extraReducers: (builder) => {
     builder
       .addCase(fetchCredits.pending, (state) => {
@@ -61,22 +51,8 @@ const dashboardSlice = createSlice({
         state.jobRoles.loading = false;
         state.jobRoles.error = action.payload;
         state.jobRoles.data = [];
-      })
-      .addCase(fetchPositionRecommendationStats.pending, (state) => {
-        state.recommendationStats.loading = true;
-        state.recommendationStats.error = null;
-      })
-      .addCase(fetchPositionRecommendationStats.fulfilled, (state, action) => {
-        state.recommendationStats.loading = false;
-        state.recommendationStats.data = action.payload;
-      })
-      .addCase(fetchPositionRecommendationStats.rejected, (state, action) => {
-        state.recommendationStats.loading = false;
-        state.recommendationStats.error = action.payload;
-        state.recommendationStats.data = null;
       });
   },
 });
 
-export const { resetRecommendationStats } = dashboardSlice.actions;
 export default dashboardSlice.reducer;
