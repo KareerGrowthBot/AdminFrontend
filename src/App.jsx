@@ -247,8 +247,8 @@ const App = () => {
 
       showMessage("Login successful");
 
-      // Refresh the page to ensure all state is properly loaded
-      window.location.reload();
+      // Navigate to root and force reload to ensure all state is properly loaded
+      window.location.href = '/';
     } catch (error) {
       throw error;
     }
