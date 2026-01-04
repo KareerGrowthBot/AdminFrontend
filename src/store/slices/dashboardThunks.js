@@ -32,21 +32,6 @@ export const fetchJobRoles = createAsyncThunk(
 );
 
 
-export const fetchPositionRecommendationStats = createAsyncThunk(
-    'dashboard/fetchPositionRecommendationStats',
-    async (positionId, { rejectWithValue }) => {
-        try {
-            console.log(`fetchPositionRecommendationStats thunk: Calling API for position ${positionId}...`);
-            const responseData = await dashboardService.getPositionRecommendationStats(positionId);
-            console.log('fetchPositionRecommendationStats thunk: API response received', responseData);
-            return responseData;
-        } catch (error) {
-            console.error('fetchPositionRecommendationStats thunk: API call failed', error);
-            return rejectWithValue(error.response?.data || error.message || `Unknown API error fetching stats for ${positionId}`);
-        }
-    }
-);
-
 export const fetchCompany = createAsyncThunk(
     'dashboard/fetchCompany',
     async (_, { rejectWithValue }) => {

@@ -112,9 +112,6 @@ const MainDashboard = ({ adminInfo }) => {
     const [jobRolesLoading, setJobRolesLoading] = useState(true);
     const [jobRolesError, setJobRolesError] = useState(null);
 
-    const [recommendationStatsData, setRecommendationStatsData] = useState(null);
-    const [recommendationStatsLoading, setRecommendationStatsLoading] = useState(false);
-    const [recommendationStatsError, setRecommendationStatsError] = useState(null);
 
     const [dashboardStats, setDashboardStats] = useState(null);
     const [dashboardStatsLoading, setDashboardStatsLoading] = useState(true);
@@ -198,28 +195,6 @@ const MainDashboard = ({ adminInfo }) => {
         }
     }, [jobRoles, jobRolesLoading, jobRolesError, selectedPositionId]);
 
-    // Fetch Position Stats when selection changes
-    useEffect(() => {
-        const loadPositionStats = async () => {
-            if (!selectedPositionId) {
-                setRecommendationStatsData(null);
-                return;
-            }
-            setRecommendationStatsLoading(true);
-            try {
-                const data = await dashboardService.getPositionRecommendationStats(selectedPositionId);
-                setRecommendationStatsData(data);
-                setRecommendationStatsError(null);
-            } catch (err) {
-                console.error("Error fetching recommendation stats:", err);
-                setRecommendationStatsError(err);
-            } finally {
-                setRecommendationStatsLoading(false);
-            }
-        };
-
-        loadPositionStats();
-    }, [selectedPositionId]);
 
 
     useEffect(() => {

@@ -116,22 +116,6 @@ export const dashboardService = {
     }
   },
 
-  getPositionRecommendationStats: async (positionId) => {
-    if (!positionId) {
-      throw new Error('Position ID (UUID) is required to fetch recommendation stats.');
-    }
-    try {
-      const response = await apiClient.get(`/api/dashboard/positions/${positionId}/recommendation-stats`);
-      if (response.data) {
-        return response.data;
-      } else {
-        throw new Error('Unexpected API response structure for recommendation stats');
-      }
-    } catch (error) {
-      console.error('Dashboard API: Error fetching recommendation stats', error);
-      throw error;
-    }
-  },
 
   getCompanyById: async () => {
     console.log('Profile API: Fetching company by ID');
