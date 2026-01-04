@@ -246,6 +246,9 @@ const App = () => {
       }
 
       showMessage("Login successful");
+
+      // Refresh the page to ensure all state is properly loaded
+      window.location.reload();
     } catch (error) {
       throw error;
     }
