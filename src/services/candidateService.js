@@ -178,6 +178,32 @@ export const candidateService = {
   saveResumeData: async (id, resumeData) => {
     const response = await apiClient.put(`${API_ENDPOINTS.GET_RESUME_HISTORY}/${id}/resume-data`, resumeData);
     return response.data;
-  }
-};
+  },
 
+  /**
+   * Send invitation email to candidate (updates status to INVITED)
+   * @param {string} candidateId - Candidate UUID
+   * @param {string} positionId - Position ID
+   * @returns {Promise<{message: string}>}
+   */
+  sendInvite: async (candidateId, positionId) => {
+    const response = await apiClient.post(API_ENDPOINTS.SEND_INVITE, { candidateId, positionId });
+    return response.data;
+  },
+
+  /**
+   * Send welcome email to candidate (requires temp password returned from creation)
+   * @param {string} candidateId - Candidate UUID
+   * @param {string} password - Temporary password to send
+   * @returns {Promise<{message: string}>}
+   */
+  sendWelcomeEmail: async (candidateId, password) => {
+    const response = await apiClient.post(API_ENDPOINTS.SEND_WELCOME, { candidateId, password });
+    return response.data;
+  },
+
+  resendInvite: async (candidateId) => {
+    const response = await apiClient.post(API_ENDPOINTS.RESEND_INVITE, { candidateId });
+    return response.data;
+  },
+};

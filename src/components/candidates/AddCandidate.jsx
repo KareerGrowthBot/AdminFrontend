@@ -359,13 +359,17 @@ const AddCandidate = ({ adminInfo }) => {
       } else {
         // Ensure resume is present for new candidates
         if (!candidateData.resumeFilename) {
-          // This should be caught by validity check above, but double check
-          // actually we set resumeFilename from uploadResponse
           candidateData.resumeFilename = resumeFilename;
           candidateData.resumeStoragePath = resumeStoragePath;
         }
-        await candidateService.addCandidate(candidateData);
-        showMessage("Candidate added successfully! Password has been sent to their email.", "success");
+        const addResponse = await candidateService.addCandidate(candidateData);
+
+        // Backend now handles sending the welcome email automatically
+        if (addResponse && addResponse.message) {
+          showMessage(addResponse.message, addResponse.message.includes("failed") ? "warning" : "success");
+        } else {
+          showMessage("Candidate added successfully!", "success");
+        }
       }
 
       // Redirect based on where user came from

@@ -127,8 +127,11 @@ const getStatusBadgeClasses = (status) => {
   if (normalizedStatus === 'PENDING' || normalizedStatus === 'IN PROGRESS') {
     return `${baseClasses} bg-gray-100 text-gray-600 ring-blue-600/20`;
   }
-  if (normalizedStatus === 'MANUALLY INVITED') {
+  if (normalizedStatus === 'MANUAL INVITED' || normalizedStatus === 'MANUALLY INVITED') {
     return `${baseClasses} bg-cyan-100 text-cyan-700 ring-cyan-600/20`;
+  }
+  if (normalizedStatus === 'FAILED') {
+    return `${baseClasses} bg-red-100 text-red-700 ring-red-600/20`;
   }
 
   return `${baseClasses} bg-gray-100 text-gray-600 ring-gray-500/20`;
@@ -488,6 +491,21 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
     }
   };
 
+  const handleResendInvite = async (candidate) => {
+    const id = candidate.id || candidate.candidateId;
+    try {
+      setLoading(true);
+      await candidateService.resendInvite(id);
+      alert("Invitation resent successfully");
+      loadTestCandidates(true);
+    } catch (error) {
+      console.error("Error resending invite:", error);
+      alert(error?.response?.data?.error || "Failed to resend invitation");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCSVFileSelect = (e) => {
     if (e.target.files[0]) handleBulkUpload(e.target.files[0]);
   };
@@ -772,6 +790,7 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">INVITED</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">RESUME SCORE</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">STATUS</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">INVITE STATUS</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-r-lg whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
@@ -828,6 +847,11 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                       <td className="px-4 py-2 text-center border-y border-gray-100">
                         <span className={`${getStatusBadgeClasses(candidate.recommendation || candidate.recommendationStatus || candidate.status)} px-3 py-1`}>
                           {formatStatusLabel(candidate.recommendation || candidate.recommendationStatus || candidate.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center border-y border-gray-100">
+                        <span className={`${getStatusBadgeClasses(candidate.inviteStatus || 'Not Invited')} px-3 py-1`}>
+                          {(candidate.inviteStatus || 'Not Invited').toUpperCase()}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-center rounded-r-lg border-r border-y border-gray-100">
@@ -911,6 +935,17 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                                     Resume
                                   </button>
                                 )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuId(null);
+                                    handleResendInvite(candidate);
+                                  }}
+                                  className="w-full px-4 py-2 text-xs text-gray-700 hover:bg-green-50 hover:text-green-700 flex items-center gap-2 transition-colors"
+                                >
+                                  <Send className="h-3.5 w-3.5" />
+                                  Resend Invite
+                                </button>
                               </div>
                             )}
                           </div>

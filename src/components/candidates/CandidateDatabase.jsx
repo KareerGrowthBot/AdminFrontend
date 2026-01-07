@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   Plus, Edit, Trash2, Search, User, MoreVertical, Eye,
   Upload, Download, X, RefreshCw, FileText, Video, Send,
-  Filter, AlertTriangle, ChevronDown, BookOpen
+  Filter, AlertTriangle, ChevronDown, BookOpen, Check,
+  Mail, Phone, GraduationCap, Building2, Calendar, Code
 } from "lucide-react";
 import PermissionWrapper from "../common/PermissionWrapper";
 import { candidateService } from "../../services/candidateService";
@@ -14,6 +16,7 @@ import { hasPermission } from "../../utils/permissions";
 import { useSubscription } from "../../providers/SubscriptionProvider";
 import AccessDenied from "../common/AccessDenied";
 import SubscriptionExpired from "../common/SubscriptionExpired";
+import SnackbarAlert from "../common/SnackbarAlert";
 
 const getPaginationItems = (currentPage, totalPages, siblingCount = 1, boundaryCount = 1) => {
   if (totalPages < 1) return [];
@@ -101,38 +104,37 @@ const getStatusBadgeClasses = (status) => {
   const normalizedStatus = (status || "PENDING").toUpperCase().replace('_', ' ');
   let baseClasses = "inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset";
 
+  if (normalizedStatus === 'ACTIVE') {
+    return `${baseClasses} bg-green-50 text-green-700 ring-green-600/20`;
+  }
+  if (normalizedStatus === 'INACTIVE') {
+    return `${baseClasses} bg-gray-50 text-gray-700 ring-gray-600/20`;
+  }
+  if (normalizedStatus === 'INVITED' || normalizedStatus === 'INVITE SENT') {
+    return `${baseClasses} bg-purple-50 text-purple-700 ring-purple-600/20`;
+  }
+  if (normalizedStatus === 'MANUAL INVITED' || normalizedStatus === 'MANUALLY INVITED' || normalizedStatus === 'MANUALLYINVITED') {
+    return `${baseClasses} bg-cyan-100 text-cyan-700 ring-cyan-600/20`;
+  }
+  if (normalizedStatus === 'FAILED') {
+    return `${baseClasses} bg-red-100 text-red-700 ring-red-600/20`;
+  }
+  if (normalizedStatus === 'PENDING' || normalizedStatus === 'NOT INVITED') {
+    return `${baseClasses} bg-gray-100 text-gray-600 ring-gray-400/20`;
+  }
+
+  // Test/Interview related statuses
   if (normalizedStatus === 'RECOMMENDED') {
     return `${baseClasses} bg-green-50 text-green-700 ring-green-600/20`;
   }
   if (normalizedStatus === 'NOT RECOMMENDED') {
     return `${baseClasses} bg-red-50 text-red-700 ring-red-600/20`;
   }
-  if (normalizedStatus === 'CAUTIOUSLY RECOMMENDED') {
-    return `${baseClasses} bg-yellow-50 text-yellow-700 ring-yellow-600/20`;
-  }
   if (normalizedStatus === 'TEST COMPLETED') {
     return `${baseClasses} bg-blue-50 text-blue-700 ring-blue-600/20`;
   }
-  if (normalizedStatus === 'INVITED' || normalizedStatus === 'NOT REGISTERED') {
-    return `${baseClasses} bg-purple-50 text-purple-700 ring-purple-600/20`;
-  }
-  if (normalizedStatus === 'EXPIRED') {
-    return `${baseClasses} bg-red-50 text-red-700 ring-red-600/20`;
-  }
-  if (normalizedStatus === 'UNATTENDED') {
-    return `${baseClasses} bg-orange-50 text-orange-700 ring-orange-600/20`;
-  }
-  if (normalizedStatus === 'NETWORK DISCONNECTED') {
-    return `${baseClasses} bg-rose-50 text-rose-700 ring-rose-600/20`;
-  }
-  if (normalizedStatus === 'TEST STARTED') {
-    return `${baseClasses} bg-cyan-50 text-cyan-700 ring-cyan-600/20`;
-  }
-  if (normalizedStatus === 'PENDING' || normalizedStatus === 'IN PROGRESS') {
+  if (normalizedStatus === 'IN PROGRESS') {
     return `${baseClasses} bg-gray-100 text-gray-600 ring-blue-600/20`;
-  }
-  if (normalizedStatus === 'MANUALLY INVITED') {
-    return `${baseClasses} bg-cyan-100 text-cyan-700 ring-cyan-600/20`;
   }
 
   return `${baseClasses} bg-gray-100 text-gray-600 ring-gray-500/20`;
@@ -148,6 +150,10 @@ const formatDateTime = (dateString) => {
   } catch (e) {
     return dateString;
   }
+};
+
+const normalizeLabel = (label) => {
+  return (label || '').toString().toUpperCase().replace(/\s/g, '');
 };
 
 const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
@@ -177,12 +183,22 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
     postedBy: 'All Users',
     postedById: '',
     createdBy: '',
-    createdBy: '',
     // paymentStatus: 'All', // Removed
   });
 
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+  const [resendingInviteId, setResendingInviteId] = useState(null);
+  
+  // Details Drawer State
+  const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
+  const [fullCandidateDetails, setFullCandidateDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const showMessage = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
 
   const isLoadingRef = useRef(false);
   const menuRefs = useRef({});
@@ -207,20 +223,24 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      let clickedInside = false;
       Object.keys(menuRefs.current).forEach((id) => {
-        if (menuRefs.current[id] && !menuRefs.current[id].contains(event.target)) {
-          setOpenMenuId(null);
+        if (menuRefs.current[id] && menuRefs.current[id].contains(event.target)) {
+          clickedInside = true;
         }
       });
+      if (!clickedInside) {
+        setOpenMenuId(null);
+      }
     };
 
     if (openMenuId) {
-      document.addEventListener("mousedown", handleClickOutside);
+      // Use click event instead of mousedown to allow menu item clicks to complete first
+      document.addEventListener("click", handleClickOutside, true);
+      return () => {
+        document.removeEventListener("click", handleClickOutside, true);
+      };
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
   }, [openMenuId]);
 
   useEffect(() => {
@@ -275,9 +295,9 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
     }
   };
 
-  const loadCandidates = async (forceReload = false) => {
+  const loadCandidates = async (forceReload = false, silent = false) => {
     // Prevent duplicate calls
-    if (isLoadingRef.current) {
+    if (isLoadingRef.current && !forceReload) {
       return;
     }
 
@@ -289,11 +309,12 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
     isLoadingRef.current = true;
 
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
 
       // Get organizationId from adminInfo or localStorage
       const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
-      console.log("Loading candidates for Organization ID:", organizationId);
 
       // Load all candidates (was college tab)
       const response = await candidateService.getAllCandidates({ organizationId });
@@ -319,9 +340,13 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
     } catch (error) {
       console.error("Error loading data:", error);
       setCandidates([]);
-      alert("Failed to load candidates. Please try again.");
+      if (!silent) {
+        alert("Failed to load candidates. Please try again.");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
       isLoadingRef.current = false;
     }
   };
@@ -470,13 +495,56 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
     });
   };
 
-  const handleView = (candidate) => {
+  const handleView = async (candidate) => {
     const id = candidate.id || candidate.candidateId;
-    if (id) {
-      navigate(`/dashboard/candidates/${id}`);
-    } else {
-      console.error("Candidate ID not found", candidate);
-      alert("Unable to view candidate details: ID missing.");
+    if (!id) {
+      showMessage("Candidate ID missing. Unable to view details.", "error");
+      return;
+    }
+
+    try {
+      setLoadingDetails(true);
+      setShowDetailsDrawer(true);
+      setOpenMenuId(null);
+      const data = await candidateService.getCandidateById(id);
+      setFullCandidateDetails(data);
+    } catch (error) {
+      console.error("Error fetching candidate full details:", error);
+      showMessage("Failed to fetch candidate details", "error");
+      setShowDetailsDrawer(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleResendInvite = async (candidate) => {
+    const id = candidate.id || candidate.candidateId;
+
+    if (!id) {
+      showMessage("Candidate ID missing. Unable to resend invitation.", "error");
+      return;
+    }
+
+    // Check if already processing
+    if (resendingInviteId === id) {
+      return;
+    }
+
+    try {
+      setResendingInviteId(id);
+      setOpenMenuId(null);
+      showMessage("Sending invitation...", "info");
+
+      await candidateService.resendInvite(id);
+      showMessage("Invitation resent successfully", "success");
+      
+      // Refresh only the candidates data silently (without showing loading state)
+      await loadCandidates(true, true);
+    } catch (error) {
+      const errorMessage = error?.response?.data?.error || error?.message || "Failed to resend invitation";
+      showMessage(errorMessage, "error");
+    } finally {
+      setResendingInviteId(null);
     }
   };
 
@@ -785,6 +853,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Mobile</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">College</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Degree / Stream</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Registered</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Status</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Last Login</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-r-lg">Action</th>
@@ -854,27 +923,52 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                       </td>
                       */}
                       <td className="px-4 py-2 text-center border-y border-gray-100">
+                        {candidate.hasLoggedIn || candidate.isRegistered ? (
+                          <div className="flex justify-center">
+                            <div className="bg-green-100 p-1 rounded-full">
+                              <Check className="h-3 w-3 text-green-600 stroke-[3px]" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-center">
+                            <div className="bg-red-100 p-1 rounded-full">
+                              <X className="h-3 w-3 text-red-600 stroke-[3px]" />
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-center border-y border-gray-100">
                         <span className={`${getStatusBadgeClasses(candidate.status)} px-3 py-1`}>
-                          {(candidate.status || 'PENDING').toUpperCase() === 'NOT REGISTERED' ? 'INVITED' : (candidate.status || 'PENDING').replace('_', ' ')}
+                          {(candidate.status || 'NOT INVITED').toUpperCase()}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-center text-gray-600 whitespace-nowrap text-xs border-y border-gray-100">
                         {formatDateTime(candidate.lastLogin)}
                       </td>
                       <td className="px-4 py-2 text-center rounded-r-lg border-r border-y border-gray-100">
-                        <div className="relative flex justify-center" ref={el => menuRefs.current[candidate.id] = el}>
+                        <div className="relative flex justify-center" ref={el => {
+                          const candidateId = candidate.id || candidate.candidateId;
+                          if (candidateId) {
+                            menuRefs.current[candidateId] = el;
+                          }
+                        }}>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setOpenMenuId(openMenuId === candidate.id ? null : candidate.id);
+                              e.preventDefault();
+                              const candidateId = candidate.id || candidate.candidateId;
+                              setOpenMenuId(openMenuId === candidateId ? null : candidateId);
                             }}
                             className="text-gray-400 hover:text-blue-600 transition p-1 hover:bg-gray-100 rounded-full focus:outline-none"
                           >
                             <MoreVertical className="h-4 w-4" />
                           </button>
 
-                          {openMenuId === candidate.id && (
-                            <div className="absolute right-0 mt-8 w-40 bg-white rounded-md shadow-lg z-50 border border-gray-100 py-1 text-left animate-in fade-in zoom-in-95 duration-75">
+                          {openMenuId === (candidate.id || candidate.candidateId) && (
+                            <div 
+                              className="absolute right-0 mt-8 w-40 bg-white rounded-md shadow-lg z-50 border border-gray-100 py-1 text-left animate-in fade-in zoom-in-95 duration-75"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {/* Resume Option */}
                               {(candidate.resumePath || candidate.resumeFilename) && (
                                 <button
@@ -920,6 +1014,39 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                                 >
                                   <Edit className="h-3.5 w-3.5" />
                                   Edit
+                                </button>
+                              </PermissionWrapper>
+                              <PermissionWrapper feature="CANDIDATE" scope="UPDATE">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const normalizedStatus = normalizeLabel(candidate.status);
+                                    const candidateId = candidate.id || candidate.candidateId;
+                                    const isProcessing = resendingInviteId === candidateId;
+                                    
+                                    if (normalizedStatus === 'MANUALLYINVITED' || isProcessing) {
+                                      return;
+                                    }
+                                    handleResendInvite(candidate);
+                                  }}
+                                  disabled={normalizeLabel(candidate.status) === 'MANUALLYINVITED' || resendingInviteId === (candidate.id || candidate.candidateId)}
+                                  className={`w-full px-4 py-2 text-xs flex items-center gap-2 transition-colors ${
+                                    normalizeLabel(candidate.status) === 'MANUALLYINVITED' || resendingInviteId === (candidate.id || candidate.candidateId)
+                                      ? "text-gray-300 cursor-not-allowed bg-gray-50"
+                                      : "text-gray-700 hover:bg-green-50 hover:text-green-700"
+                                    }`}
+                                >
+                                  {resendingInviteId === (candidate.id || candidate.candidateId) ? (
+                                    <>
+                                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                      Sending...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Send className="h-3.5 w-3.5" />
+                                      {normalizeLabel(candidate.status) === 'MANUALLYINVITED' ? "Invite Sent" : "Resend Invite"}
+                                    </>
+                                  )}
                                 </button>
                               </PermissionWrapper>
                             </div>
@@ -982,8 +1109,180 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
           </div>
         )}
       </div>
+      <SnackbarAlert
+        open={snackbar.open}
+        message={snackbar.message}
+        severity={snackbar.severity}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      />
+
+      {/* Candidate Details Drawer - Rendered via Portal */}
+      {showDetailsDrawer && createPortal(
+        <div className="fixed inset-0 z-[10000] overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
+            onClick={() => setShowDetailsDrawer(false)}
+          />
+
+          {/* Drawer Content */}
+          <div className="absolute inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-slate-50 shadow-2xl transition-transform animate-in slide-in-from-right duration-300 border-l border-slate-200 flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-5 bg-white border-b border-slate-200 flex items-center justify-between sticky top-0 z-10">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 leading-tight">Candidate Details</h2>
+                <p className="text-[11px] font-medium text-slate-500 mt-1 uppercase tracking-wider">Comprehensive View</p>
+              </div>
+              <button
+                onClick={() => setShowDetailsDrawer(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 pb-12">
+              {loadingDetails ? (
+                <div className="h-full flex flex-col items-center justify-center space-y-4">
+                  <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+                  <p className="text-xs font-bold text-slate-400">Fetching complete details...</p>
+                </div>
+              ) : fullCandidateDetails ? (
+                <>
+                  {/* Section: Personal Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Personal Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <DetailItem label="Full Name" value={fullCandidateDetails.fullName || fullCandidateDetails.name || fullCandidateDetails.candidateName} icon={<User size={10} />} />
+                      <DetailItem label="Email Address" value={fullCandidateDetails.email} icon={<Mail size={10} />} />
+                      <DetailItem label="Mobile Number" value={fullCandidateDetails.mobileNumber || fullCandidateDetails.phone || "Not Provided"} icon={<Phone size={10} />} />
+                      <DetailItem label="Candidate Code" value={fullCandidateDetails.code || fullCandidateDetails.candidateCode || "N/A"} icon={<Code size={10} />} />
+                      <DetailItem label="Registration Number" value={fullCandidateDetails.regNo || "Not Provided"} />
+                      <DetailItem label="Status"
+                        value={
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            (fullCandidateDetails.status || '').toUpperCase() === 'ACTIVE' || (fullCandidateDetails.status || '').toUpperCase() === 'TEST_COMPLETED'
+                              ? 'bg-green-50 text-green-700'
+                              : (fullCandidateDetails.status || '').toUpperCase() === 'INVITED' || (fullCandidateDetails.status || '').toUpperCase() === 'MANUALLY INVITED'
+                              ? 'bg-purple-50 text-purple-700'
+                              : 'bg-gray-50 text-gray-700'
+                          }`}>
+                            {(fullCandidateDetails.status || 'PENDING').toUpperCase()}
+                          </span>
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  {/* Section: Academic Information */}
+                  <div className="space-y-4 pt-2">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Academic Information
+                    </h3>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                        <DetailItem label="College" value={fullCandidateDetails.college || fullCandidateDetails.collegeName || "Not Provided"} icon={<Building2 size={10} />} />
+                        <DetailItem label="Degree" value={fullCandidateDetails.degree || "Not Provided"} icon={<GraduationCap size={10} />} />
+                        <DetailItem label="Stream" value={fullCandidateDetails.stream || "Not Provided"} />
+                        <DetailItem label="Semester" value={fullCandidateDetails.semester || "Not Provided"} />
+                        <DetailItem label="Academic Year" value={
+                          fullCandidateDetails.academicYearStart && fullCandidateDetails.academicYearEnd
+                            ? `${fullCandidateDetails.academicYearStart} - ${fullCandidateDetails.academicYearEnd}`
+                            : "Not Provided"
+                        } />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section: Account Information */}
+                  <div className="space-y-4 pt-2">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Account Information
+                    </h3>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                        <DetailItem label="Registered" value={
+                          fullCandidateDetails.hasLoggedIn || fullCandidateDetails.isRegistered
+                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">
+                                <Check size={10} className="mr-1" /> Yes
+                              </span>
+                            : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700">
+                                <X size={10} className="mr-1" /> No
+                              </span>
+                        } />
+                        <DetailItem label="Last Login" value={
+                          fullCandidateDetails.lastLogin
+                            ? new Date(fullCandidateDetails.lastLogin).toLocaleString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : "Never"
+                        } icon={<Calendar size={10} />} />
+                        <DetailItem label="Created At" value={
+                          fullCandidateDetails.createdAt || fullCandidateDetails.candidateCreatedAt
+                            ? new Date(fullCandidateDetails.createdAt || fullCandidateDetails.candidateCreatedAt).toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric'
+                              })
+                            : "N/A"
+                        } />
+                        <DetailItem label="Registration Paid" value={
+                          fullCandidateDetails.registrationPaid || fullCandidateDetails.registration_paid
+                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">Paid</span>
+                            : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-50 text-gray-700">Unpaid</span>
+                        } />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section: Resume Information */}
+                  {(fullCandidateDetails.resumePath || fullCandidateDetails.resumeFilename) && (
+                    <div className="space-y-4 pt-2">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Resume Information
+                      </h3>
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                        <DetailItem label="Resume File" value={
+                          <a
+                            href={fullCandidateDetails.resumePath?.startsWith('http') 
+                              ? fullCandidateDetails.resumePath 
+                              : `/api/resumes/${fullCandidateDetails.resumePath || fullCandidateDetails.resumeFilename}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            <Download size={10} /> {fullCandidateDetails.resumeFilename || fullCandidateDetails.resumePath?.split('/').pop() || 'Resume'}
+                          </a>
+                        } />
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
+
+// Helper component for detail items
+const DetailItem = ({ label, value, icon }) => (
+  <div className="flex flex-col gap-0.5">
+    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter flex items-center gap-1">
+      {icon}{label}
+    </span>
+    <span className="text-xs font-semibold text-slate-800 break-words">{value || "—"}</span>
+  </div>
+);
 
 export default CandidateDatabase;

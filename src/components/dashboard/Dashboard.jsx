@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
-import { Home, Users, UserPlus, Settings, Briefcase, Shield, FileText } from "lucide-react";
+import { Home, Users, UserPlus, Settings, Briefcase, Shield, FileText, MessageSquare } from "lucide-react";
 import { authService } from "../../services/authService";
 import { clearAuthCookies } from "../../utils/cookieUtils";
 import { clearUserInfo } from "../../utils/storageUtils";
@@ -23,6 +23,7 @@ import Positions from "../positions/Positions";
 import MainDashboard from "./MainDashboard"; // Import MainDashboard
 import Payment from "../payment/Payment";
 import Billing from "../payment/Billing";
+import ContactUs from "../common/ContactUs";
 import { useSubscription } from "../../providers/SubscriptionProvider";
 
 const Dashboard = ({ adminInfo, onLogout }) => {
@@ -155,6 +156,14 @@ const Dashboard = ({ adminInfo, onLogout }) => {
       // Show if user has ANY candidate permission
       requiredPermission: { feature: "CANDIDATE", checkAny: true }
     },
+    {
+      icon: MessageSquare,
+      label: "Contact Us",
+      id: "contact-us",
+      onClick: () => navigate("/dashboard/contact-us"),
+      // Contact Us is always accessible
+      requiredPermission: null
+    },
   ];
 
   // Retrieve role name and check if user is Admin
@@ -273,6 +282,9 @@ const Dashboard = ({ adminInfo, onLogout }) => {
         } />
         <Route path="/question-sets/create" element={<CreateQuestionSet adminInfo={adminInfo} />} />
         <Route path="/payment" element={<Payment />} />
+        <Route path="/contact-us" element={
+          <ContactUs adminInfo={adminInfo} />
+        } />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

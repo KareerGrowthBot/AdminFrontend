@@ -620,9 +620,25 @@ const CreateCandidate = ({ adminInfo }) => {
         // TODO: Add update API when available
         showMessage("Update functionality coming soon", "info");
       } else {
-        // Create candidate with full details and position link
-        await candidateService.createCandidate(candidateData);
-        showMessage("Candidate added successfully!", "success");
+        // Create candidate with full details and position link (Status: PENDING)
+        const createResponse = await candidateService.createCandidate(candidateData);
+
+        // Show interim status
+        showMessage("Candidate added. Sending invitation email...", "info");
+
+        // Send invitation email separately (Status: PENDING -> INVITED)
+        if (createResponse && createResponse.candidatePosition) {
+          const { candidateId, positionId } = createResponse.candidatePosition;
+          try {
+            await candidateService.sendInvite(candidateId, positionId);
+            showMessage("Candidate added and invited successfully!", "success");
+          } catch (emailError) {
+            console.error("Error sending invite:", emailError);
+            showMessage("Candidate added, but failed to send invitation email.", "warning");
+          }
+        } else {
+          showMessage("Candidate added, but response missing details for invite.", "warning");
+        }
 
         // Redirect to candidates list after 1 second
         setTimeout(() => {
@@ -632,7 +648,7 @@ const CreateCandidate = ({ adminInfo }) => {
               forceReload: true
             }
           });
-        }, 1000);
+        }, 1500); // Slight increase to allow reading message
       }
     } catch (error) {
       console.error("Error creating candidate:", error);

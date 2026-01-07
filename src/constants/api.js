@@ -23,6 +23,9 @@ export const API_ENDPOINTS = {
   ADD_CANDIDATE: "/api/candidates/add",
   SEARCH_CANDIDATE_BY_EMAIL: "/api/candidates/search",
   GET_CANDIDATE_BY_EMAIL: "/api/candidates",
+  SEND_INVITE: "/api/candidates/send-invite",
+  SEND_WELCOME: "/api/candidates/send-welcome",
+  RESEND_INVITE: "/api/candidates/resend-invite",
 
   // Role endpoints
   GET_ALL_ROLES: "/api/roles",
