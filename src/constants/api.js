@@ -1,6 +1,6 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8086";
-export const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || "http://localhost:8087";
-export const AI_BACKEND_WS_URL = import.meta.env.VITE_AI_BACKEND_WS_URL || "ws://localhost:8087";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://admin-backend-77pg.onrender.com";
+export const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || "https://ai-service-ad32.onrender.com";
+export const AI_BACKEND_WS_URL = import.meta.env.VITE_AI_BACKEND_WS_URL || "wss://ai-service-ad32.onrender.com";
 
 export const API_ENDPOINTS = {
   // Auth endpoints
