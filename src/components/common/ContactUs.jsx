@@ -61,7 +61,7 @@ const ContactUs = ({ adminInfo }) => {
             const allTickets = await ticketService.getAllTickets();
             // Filter tickets for current admin user
             const userEmail = adminInfo?.email || adminInfo?.admin?.email;
-            const userTickets = allTickets.filter(ticket => 
+            const userTickets = allTickets.filter(ticket =>
                 ticket.email?.toLowerCase() === userEmail?.toLowerCase()
             );
             setTickets(userTickets);
@@ -117,7 +117,7 @@ const ContactUs = ({ adminInfo }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!formData.subject.trim() || !formData.message.trim()) {
             showMessage("Please fill in all required fields", "error");
             return;
@@ -127,21 +127,22 @@ const ContactUs = ({ adminInfo }) => {
         try {
             const userEmail = adminInfo?.email || adminInfo?.admin?.email;
             const userName = adminInfo?.fullName || adminInfo?.admin?.fullName || "Admin";
-            
+
             const ticketData = {
                 subject: formData.subject,
                 type: formData.type,
                 message: formData.message,
                 file: formData.file,
                 userType: "ADMIN",
+                target: "EXTERNAL",
                 name: userName,
                 email: userEmail
             };
 
             const response = await ticketService.submitTicket(ticketData);
-            
+
             showMessage("Ticket submitted successfully! We'll get back to you soon.");
-            
+
             // Reset form
             setFormData({
                 subject: "",
@@ -151,7 +152,7 @@ const ContactUs = ({ adminInfo }) => {
             });
             setFileName("");
             setShowForm(false);
-            
+
             // Refresh tickets list
             await fetchTickets();
         } catch (error) {
@@ -190,7 +191,7 @@ const ContactUs = ({ adminInfo }) => {
 
     const filteredTickets = tickets.filter(ticket => {
         const matchesSearch = ticket.subject?.toLowerCase().includes(search.toLowerCase()) ||
-                            ticket.message?.toLowerCase().includes(search.toLowerCase());
+            ticket.message?.toLowerCase().includes(search.toLowerCase());
         const matchesFilter = filterType === "all" || ticket.status === filterType;
         return matchesSearch && matchesFilter;
     });
@@ -392,114 +393,114 @@ const ContactUs = ({ adminInfo }) => {
 
             {/* Tickets List */}
             {!showForm && (
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-slate-900">Your Tickets</h2>
-                        <div className="flex items-center gap-3">
-                            {fetchingTickets && (
-                                <RefreshCw size={14} className="animate-spin text-slate-400" />
-                            )}
-                            <span className="text-xs text-slate-500 font-medium">
-                                {filteredTickets.length} {filteredTickets.length === 1 ? 'ticket' : 'tickets'}
-                            </span>
+                <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                    <div className="bg-slate-50 px-6 py-4 border-b border-slate-200">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-bold text-slate-900">Your Tickets</h2>
+                            <div className="flex items-center gap-3">
+                                {fetchingTickets && (
+                                    <RefreshCw size={14} className="animate-spin text-slate-400" />
+                                )}
+                                <span className="text-xs text-slate-500 font-medium">
+                                    {filteredTickets.length} {filteredTickets.length === 1 ? 'ticket' : 'tickets'}
+                                </span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {fetchingTickets ? (
-                    <div className="p-12 text-center">
-                        <RefreshCw className="w-8 h-8 text-slate-400 mx-auto mb-4 animate-spin" />
-                        <p className="text-xs text-slate-500">Loading tickets...</p>
-                    </div>
-                ) : filteredTickets.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                        <h3 className="text-sm font-semibold text-slate-700 mb-1">No tickets yet</h3>
-                        <p className="text-xs text-slate-500 mb-4">
-                            {tickets.length === 0 
-                                ? "Get started by raising your first ticket"
-                                : "No tickets match your search criteria"}
-                        </p>
-                        {tickets.length === 0 && !showForm && (
-                            <button
-                                onClick={() => setShowForm(true)}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-qwikBlue text-white rounded-lg hover:bg-qwikBlueDark transition-colors text-xs font-semibold"
-                            >
-                                <Plus size={14} />
-                                Raise a Ticket
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <div className="divide-y divide-slate-100">
-                        {filteredTickets.map((ticket) => {
-                            const typeInfo = getTypeInfo(ticket.type);
-                            const TypeIcon = typeInfo.icon;
-                            const date = ticket.createdAt ? new Date(ticket.createdAt) : new Date();
-                            const formattedDate = date.toLocaleDateString('en-US', { 
-                                year: 'numeric', 
-                                month: 'short', 
-                                day: 'numeric' 
-                            });
-                            const formattedTime = date.toLocaleTimeString('en-US', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                            });
-
-                            return (
-                                <div
-                                    key={ticket.id}
-                                    className="p-6 hover:bg-slate-50 transition-colors group"
+                    {fetchingTickets ? (
+                        <div className="p-12 text-center">
+                            <RefreshCw className="w-8 h-8 text-slate-400 mx-auto mb-4 animate-spin" />
+                            <p className="text-xs text-slate-500">Loading tickets...</p>
+                        </div>
+                    ) : filteredTickets.length === 0 ? (
+                        <div className="p-12 text-center">
+                            <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                            <h3 className="text-sm font-semibold text-slate-700 mb-1">No tickets yet</h3>
+                            <p className="text-xs text-slate-500 mb-4">
+                                {tickets.length === 0
+                                    ? "Get started by raising your first ticket"
+                                    : "No tickets match your search criteria"}
+                            </p>
+                            {tickets.length === 0 && !showForm && (
+                                <button
+                                    onClick={() => setShowForm(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-qwikBlue text-white rounded-lg hover:bg-qwikBlueDark transition-colors text-xs font-semibold"
                                 >
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-start gap-3 mb-3">
-                                                <div className={`p-2 rounded-lg ${typeInfo.color} flex-shrink-0`}>
-                                                    <TypeIcon size={18} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="text-sm font-bold text-slate-900 truncate">
-                                                            {ticket.subject}
-                                                        </h3>
-                                                        {getStatusBadge(ticket.status)}
+                                    <Plus size={14} />
+                                    Raise a Ticket
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100">
+                            {filteredTickets.map((ticket) => {
+                                const typeInfo = getTypeInfo(ticket.type);
+                                const TypeIcon = typeInfo.icon;
+                                const date = ticket.createdAt ? new Date(ticket.createdAt) : new Date();
+                                const formattedDate = date.toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                });
+                                const formattedTime = date.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+
+                                return (
+                                    <div
+                                        key={ticket.id}
+                                        className="p-6 hover:bg-slate-50 transition-colors group"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start gap-3 mb-3">
+                                                    <div className={`p-2 rounded-lg ${typeInfo.color} flex-shrink-0`}>
+                                                        <TypeIcon size={18} />
                                                     </div>
-                                                    <p className="text-xs text-slate-600 line-clamp-2 mb-2">
-                                                        {ticket.message}
-                                                    </p>
-                                                    <div className="flex items-center gap-4 text-[10px] text-slate-500">
-                                                        <div className="flex items-center gap-1">
-                                                            <Calendar size={12} />
-                                                            <span>{formattedDate}</span>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h3 className="text-sm font-bold text-slate-900 truncate">
+                                                                {ticket.subject}
+                                                            </h3>
+                                                            {getStatusBadge(ticket.status)}
                                                         </div>
-                                                        <div className="flex items-center gap-1">
-                                                            <Clock size={12} />
-                                                            <span>{formattedTime}</span>
+                                                        <p className="text-xs text-slate-600 line-clamp-2 mb-2">
+                                                            {ticket.message}
+                                                        </p>
+                                                        <div className="flex items-center gap-4 text-[10px] text-slate-500">
+                                                            <div className="flex items-center gap-1">
+                                                                <Calendar size={12} />
+                                                                <span>{formattedDate}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <Clock size={12} />
+                                                                <span>{formattedTime}</span>
+                                                            </div>
+                                                            {ticket.name && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="font-medium">By:</span>
+                                                                    <span>{ticket.name}</span>
+                                                                </div>
+                                                            )}
+                                                            {ticket.fileName && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <Paperclip size={12} />
+                                                                    <span>{ticket.fileName}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        {ticket.name && (
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="font-medium">By:</span>
-                                                                <span>{ticket.name}</span>
-                                                            </div>
-                                                        )}
-                                                        {ticket.fileName && (
-                                                            <div className="flex items-center gap-1">
-                                                                <Paperclip size={12} />
-                                                                <span>{ticket.fileName}</span>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
             )}
 
             <SnackbarAlert

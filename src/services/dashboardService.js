@@ -152,6 +152,17 @@ export const dashboardService = {
       console.error('Dashboard API: Error fetching subscription', error);
       return null;
     }
+  },
+
+  /**
+   * Get recommendation statistics for a specific position
+   * @param {string} organizationId - Organization ID
+   * @param {string} positionId - Position ID
+   * @returns {Promise<Object>}
+   */
+  getPositionRecommendationStats: async (organizationId, positionId) => {
+    const response = await apiClient.get(`/api/dashboard/organization/${organizationId}/positions/${positionId}/stats`);
+    return response.data;
   }
 };
 

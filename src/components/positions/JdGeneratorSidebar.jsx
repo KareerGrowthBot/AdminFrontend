@@ -3,9 +3,11 @@ import { X, Sparkles, Check, RefreshCw } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import api from '../../services/apiService';
+import { API_BASE_URL } from '../../constants/api';
 
-// Backend URL for socket connection
-const SOCKET_URL = 'http://localhost:8086/ws';
+// Backend URL for socket connection - use API_BASE_URL from .env
+// SockJS works with HTTP/HTTPS URLs and handles WebSocket upgrade automatically
+const SOCKET_URL = `${API_BASE_URL}/ws`;
 
 const JdGeneratorSidebar = ({ isOpen, onClose, inputData, onUseJd }) => {
     const [jdContent, setJdContent] = useState('');

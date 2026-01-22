@@ -1,6 +1,17 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://admin-backend-77pg.onrender.com";
-export const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL || "https://ai-service-ad32.onrender.com";
-export const AI_BACKEND_WS_URL = import.meta.env.VITE_AI_BACKEND_WS_URL || "wss://ai-service-ad32.onrender.com";
+// All URLs must be set in .env file
+if (!import.meta.env.VITE_API_BASE_URL) {
+  throw new Error("VITE_API_BASE_URL is not set in .env file");
+}
+if (!import.meta.env.VITE_AI_BACKEND_URL) {
+  throw new Error("VITE_AI_BACKEND_URL is not set in .env file");
+}
+if (!import.meta.env.VITE_AI_BACKEND_WS_URL) {
+  throw new Error("VITE_AI_BACKEND_WS_URL is not set in .env file");
+}
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+export const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL;
+export const AI_BACKEND_WS_URL = import.meta.env.VITE_AI_BACKEND_WS_URL;
 
 export const API_ENDPOINTS = {
   // Auth endpoints
@@ -26,6 +37,8 @@ export const API_ENDPOINTS = {
   SEND_INVITE: "/api/candidates/send-invite",
   SEND_WELCOME: "/api/candidates/send-welcome",
   RESEND_INVITE: "/api/candidates/resend-invite",
+  GENERATE_PUBLIC_LINK: "/api/candidates/generate-public-link",
+  GET_EXISTING_PUBLIC_LINK: "/api/candidates/get-public-link",
 
   // Role endpoints
   GET_ALL_ROLES: "/api/roles",

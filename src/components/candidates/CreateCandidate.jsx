@@ -20,6 +20,8 @@ const CreateCandidate = ({ adminInfo }) => {
 
   const [formData, setFormData] = useState({
     positionId: positionIdFromState || location.state?.positionId || "",
+    positionTitle: location.state?.positionTitle || "",
+    positionCode: location.state?.positionCode || "",
     questionSetId: questionSetIdFromState || location.state?.questionSetId || "",
     interviewScheduleType: location.state?.interviewScheduleType || "LINK_VALIDITY",
     linkExpiresInDays: location.state?.linkExpiresInDays || "7",
@@ -33,6 +35,15 @@ const CreateCandidate = ({ adminInfo }) => {
     semester: location.state?.semester || "",
     registrationPaid: location.state?.registrationPaid || false
   });
+
+  const [publicLink, setPublicLink] = useState("");
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkParams, setLinkParams] = useState({
+    positionId: "",
+    questionSetId: "",
+    linkExpiresInDays: ""
+  });
+  const [checkingExistingLink, setCheckingExistingLink] = useState(false);
 
   const [showNotFoundPopup, setShowNotFoundPopup] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
@@ -328,6 +339,77 @@ const CreateCandidate = ({ adminInfo }) => {
     }
   }, [formData.positionId]);
 
+  // Check for existing public link when parameters change
+  useEffect(() => {
+    const checkExistingLink = async () => {
+      // Only check if we're in PUBLIC link mode and all required fields are filled
+      if (formData.linkType === "PUBLIC" &&
+        formData.positionId &&
+        formData.questionSetId &&
+        formData.linkExpiresInDays) {
+
+        // Check if parameters have changed (normalize linkExpiresInDays for comparison)
+        const currentParams = {
+          positionId: formData.positionId,
+          questionSetId: formData.questionSetId,
+          linkExpiresInDays: formData.linkExpiresInDays.toString()
+        };
+
+        const paramsChanged =
+          linkParams.positionId !== currentParams.positionId ||
+          linkParams.questionSetId !== currentParams.questionSetId ||
+          linkParams.linkExpiresInDays !== currentParams.linkExpiresInDays;
+
+        // If parameters match existing link params, don't check again
+        if (!paramsChanged && publicLink) {
+          return;
+        }
+
+        setCheckingExistingLink(true);
+        try {
+          const response = await candidateService.getExistingPublicLink({
+            positionId: formData.positionId,
+            questionSetId: formData.questionSetId,
+            linkExpiresInDays: parseInt(formData.linkExpiresInDays)
+          });
+
+          if (response.exists && response.publicLink) {
+            // Check if link is expired
+            if (response.expired) {
+              showMessage("The previously generated link has expired. Please generate a new link.", "warning");
+              setPublicLink("");
+              setLinkParams(currentParams);
+            } else {
+              setPublicLink(response.publicLink);
+              setLinkParams(currentParams);
+            }
+          } else {
+            // No existing link found, clear if params changed
+            if (paramsChanged) {
+              setPublicLink("");
+            }
+            setLinkParams(currentParams);
+          }
+        } catch (error) {
+          console.error("Error checking existing link:", error);
+          // Don't show error, just continue
+        } finally {
+          setCheckingExistingLink(false);
+        }
+      } else if (formData.linkType === "PUBLIC") {
+        // Clear link if required fields are missing
+        setPublicLink("");
+        setLinkParams({
+          positionId: "",
+          questionSetId: "",
+          linkExpiresInDays: ""
+        });
+      }
+    };
+
+    checkExistingLink();
+  }, [formData.linkType, formData.positionId, formData.questionSetId, formData.linkExpiresInDays]);
+
   // Load candidate data if editing
   useEffect(() => {
     if (candidateFromState) {
@@ -464,12 +546,34 @@ const CreateCandidate = ({ adminInfo }) => {
     setSnackbar((prev) => ({ ...prev, open: false }));
   };
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+
+    // If position is being changed, fetch position details
+    if (name === "positionId" && value) {
+      try {
+        const positionDetails = await positionService.getPositionById(value);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          positionTitle: positionDetails?.title || "",
+          positionCode: positionDetails?.code || ""
+        }));
+      } catch (error) {
+        console.error("Error fetching position details:", error);
+        setFormData(prev => ({
+          ...prev,
+          [name]: value,
+          positionTitle: "",
+          positionCode: ""
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
   };
 
   const handleEmailBlur = async (e) => {
@@ -545,6 +649,110 @@ const CreateCandidate = ({ adminInfo }) => {
     }));
   };
 
+  const handleGeneratePublicLink = async () => {
+    // Validation
+    if (!formData.positionId) {
+      showMessage("Please select a position", "error");
+      return;
+    }
+    if (!formData.questionSetId) {
+      showMessage("Please select a question set", "error");
+      return;
+    }
+
+    try {
+      setGeneratingLink(true);
+
+      // Calculate expiration date from today + linkExpiresInDays
+      const expiresInDays = parseInt(formData.linkExpiresInDays) || 7;
+      const today = new Date();
+      const expiresAt = new Date(today);
+      expiresAt.setDate(today.getDate() + expiresInDays);
+
+      // Format as YYYY-MM-DD HH:mm:ss for backend
+      const year = expiresAt.getFullYear();
+      const month = String(expiresAt.getMonth() + 1).padStart(2, '0');
+      const day = String(expiresAt.getDate()).padStart(2, '0');
+      const hours = String(expiresAt.getHours()).padStart(2, '0');
+      const minutes = String(expiresAt.getMinutes()).padStart(2, '0');
+      const seconds = String(expiresAt.getSeconds()).padStart(2, '0');
+      const expiresAtFormatted = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
+      console.log("Calculated expiration date:", expiresAtFormatted, "from today +", expiresInDays, "days");
+
+      const response = await candidateService.generatePublicLink({
+        positionId: formData.positionId,
+        positionTitle: formData.positionTitle,
+        positionCode: formData.positionCode,
+        questionSetId: formData.questionSetId,
+        linkExpiresInDays: expiresInDays,
+        expiresAt: expiresAtFormatted, // Send calculated date
+        interviewScheduleType: formData.interviewScheduleType || "LINK_VALIDITY"
+      });
+
+      if (response && response.publicLink) {
+        setPublicLink(response.publicLink);
+        // Update link params to match current form data
+        setLinkParams({
+          positionId: formData.positionId,
+          questionSetId: formData.questionSetId,
+          linkExpiresInDays: formData.linkExpiresInDays.toString()
+        });
+
+        // Log all returned details for debugging
+        console.log("Public link generated with details:", {
+          publicLink: response.publicLink,
+          positionId: response.positionId,
+          positionTitle: response.positionTitle,
+          positionCode: response.positionCode,
+          questionSetId: response.questionSetId,
+          questionSetCode: response.questionSetCode,
+          interviewScheduleType: response.interviewScheduleType,
+          linkExpiresInDays: response.linkExpiresInDays,
+          expiresAt: response.expiresAt
+        });
+
+        showMessage("Public link generated successfully!", "success");
+      } else {
+        showMessage("Failed to generate link", "error");
+      }
+    } catch (error) {
+      console.error("Error generating public link:", error);
+      const errorMessage = error?.response?.data?.error || error?.message || "Failed to generate link. Please try again.";
+      showMessage(errorMessage, "error");
+    } finally {
+      setGeneratingLink(false);
+    }
+  };
+
+  // Check if button should be disabled
+  const isGenerateButtonDisabled = () => {
+    if (generatingLink || checkingExistingLink) return true;
+    if (!formData.positionId || !formData.questionSetId) return false; // Allow click to show validation
+
+    // Check if current params match the link params (normalize linkExpiresInDays for comparison)
+    const currentParams = {
+      positionId: formData.positionId,
+      questionSetId: formData.questionSetId,
+      linkExpiresInDays: formData.linkExpiresInDays.toString()
+    };
+
+    const paramsMatch =
+      linkParams.positionId === currentParams.positionId &&
+      linkParams.questionSetId === currentParams.questionSetId &&
+      linkParams.linkExpiresInDays === currentParams.linkExpiresInDays;
+
+    // Disable if link exists and params match
+    return publicLink && paramsMatch;
+  };
+
+  const handleCopyLink = () => {
+    if (publicLink) {
+      navigator.clipboard.writeText(publicLink);
+      showMessage("Link copied to clipboard!", "success");
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -575,6 +783,15 @@ const CreateCandidate = ({ adminInfo }) => {
         showMessage("Please upload candidate resume", "error");
         return;
       }
+    }
+    if (formData.linkType === "PUBLIC") {
+      if (!publicLink) {
+        showMessage("Please generate a public link first", "error");
+        return;
+      }
+      // For public link, we don't need to submit - the link is already generated
+      showMessage("Public link is ready to share!", "success");
+      return;
     }
 
     try {
@@ -624,20 +841,22 @@ const CreateCandidate = ({ adminInfo }) => {
         const createResponse = await candidateService.createCandidate(candidateData);
 
         // Show interim status
-        showMessage("Candidate added. Sending invitation email...", "info");
+        showMessage("Processing candidate...", "info");
 
-        // Send invitation email separately (Status: PENDING -> INVITED)
-        if (createResponse && createResponse.candidatePosition) {
-          const { candidateId, positionId } = createResponse.candidatePosition;
-          try {
-            await candidateService.sendInvite(candidateId, positionId);
-            showMessage("Candidate added and invited successfully!", "success");
-          } catch (emailError) {
-            console.error("Error sending invite:", emailError);
-            showMessage("Candidate added, but failed to send invitation email.", "warning");
+        // Status is handled by backend now
+        if (createResponse && createResponse.candidate) {
+          const recommendation = createResponse.candidate.recommendation;
+          const resumeScore = createResponse.candidatePosition ? createResponse.candidatePosition.resumeMatchScore : null;
+
+          if (recommendation === 'INVITED') {
+            showMessage(`Candidate added and invited successfully! (Resume Score: ${resumeScore})`, "success");
+          } else if (recommendation === 'RESUME_REJECTED' || recommendation === 'RESUME REJECTED') {
+            showMessage(`Candidate added, but resume was rejected. Score: ${resumeScore} (Threshold: 45)`, "warning");
+          } else {
+            showMessage("Candidate added successfully.", "success");
           }
         } else {
-          showMessage("Candidate added, but response missing details for invite.", "warning");
+          showMessage("Candidate added successfully.", "success");
         }
 
         // Redirect to candidates list after 1 second
@@ -786,7 +1005,16 @@ const CreateCandidate = ({ adminInfo }) => {
               <div className="flex ml-6">
                 <button
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, linkType: "PRIVATE" }))}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, linkType: "PRIVATE" }));
+                    // Clear public link when switching to private
+                    setPublicLink("");
+                    setLinkParams({
+                      positionId: "",
+                      questionSetId: "",
+                      linkExpiresInDays: ""
+                    });
+                  }}
                   className={`px-3 py-1.5 rounded-tl text-xs font-semibold transition relative ${formData.linkType === "PRIVATE"
                     ? "bg-gradient-to-r from-blue-600 to-qwikBlue border-2 border-blue-600 ring-2 ring-navy-500 text-white z-10"
                     : "bg-white border-t border-l border-gray-300 hover:bg-gray-50 text-gray-700 z-0"
@@ -796,7 +1024,10 @@ const CreateCandidate = ({ adminInfo }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, linkType: "PUBLIC" }))}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, linkType: "PUBLIC" }));
+                    // Don't clear link when switching to public - it will be loaded if exists
+                  }}
                   className={`px-3 py-1.5 rounded-tr text-xs font-semibold transition relative ${formData.linkType === "PUBLIC"
                     ? "bg-gradient-to-r from-blue-600 to-qwikBlue border-2 border-blue-600 ring-2 ring-navy-500 text-white z-10"
                     : "bg-white border-t border-r border-gray-300 hover:bg-gray-50 text-gray-700 z-0"
@@ -813,6 +1044,58 @@ const CreateCandidate = ({ adminInfo }) => {
               <div className="border-b border-gray-300 bg-gray-50 px-3 py-1.5">
                 <span className="text-xs font-medium text-gray-700">Candidate Details</span>
               </div>
+
+              {/* Public Link Section */}
+              {formData.linkType === "PUBLIC" && (
+                <div className="p-2">
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-navy-700 mb-1">
+                        Public Registration Link
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={publicLink}
+                          readOnly
+                          placeholder="Click 'Generate Link' to create a public registration link"
+                          className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-gray-400 transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleGeneratePublicLink}
+                          disabled={isGenerateButtonDisabled()}
+                          className="px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {checkingExistingLink ? "Checking..." : generatingLink ? "Generating..." : publicLink && isGenerateButtonDisabled() ? "Link Generated" : "Generate Link"}
+                        </button>
+                        {publicLink && (
+                          <button
+                            type="button"
+                            onClick={handleCopyLink}
+                            className="px-3 py-1.5 text-xs font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-lg transition"
+                          >
+                            Copy
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Share this link with candidates. They can register and will be automatically linked to this position.
+                        {publicLink && isGenerateButtonDisabled() && (
+                          <span className="block mt-1 text-green-600 font-medium">
+                            ✓ Link is active and will expire in {formData.linkExpiresInDays} day(s)
+                          </span>
+                        )}
+                        {checkingExistingLink && (
+                          <span className="block mt-1 text-blue-600 text-xs">
+                            Checking for existing link...
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Candidate Details Fields (for Private Link) */}
               {formData.linkType === "PRIVATE" && (
@@ -980,11 +1263,18 @@ const CreateCandidate = ({ adminInfo }) => {
         <div className="flex gap-3 px-6 py-4 border-t border-gray-200">
           <button
             type="submit"
-            disabled={loading || uploading}
+            disabled={loading || uploading || (formData.linkType === "PUBLIC" && !publicLink)}
             className="flex-1 py-2 px-4 text-xs bg-gradient-to-r from-blue-600 to-qwikBlue hover:from-blue-700 hover:to-qwikBlueDark text-white font-semibold rounded-lg transition duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             <Save size={16} />
-            {uploading ? "Uploading..." : loading ? (isEditMode ? "Updating..." : "Adding...") : (isEditMode ? "Update Candidate" : "Add Candidate")}
+            {formData.linkType === "PUBLIC"
+              ? "Link Generated"
+              : uploading
+                ? "Uploading..."
+                : loading
+                  ? (isEditMode ? "Updating..." : "Adding...")
+                  : (isEditMode ? "Update Candidate" : "Add Candidate")
+            }
           </button>
           <button
             type="button"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, Fragment } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Plus, Edit, Trash2, Search, User, MoreVertical, Eye,
@@ -100,7 +101,7 @@ const getStatusBadgeClasses = (status) => {
   if (normalizedStatus === 'RECOMMENDED') {
     return `${baseClasses} bg-green-50 text-green-700 ring-green-600/20`;
   }
-  if (normalizedStatus === 'NOT RECOMMENDED' || normalizedStatus === 'REJECTED') {
+  if (normalizedStatus === 'NOT RECOMMENDED' || normalizedStatus === 'REJECTED' || normalizedStatus === 'RESUME REJECTED') {
     return `${baseClasses} bg-red-50 text-red-700 ring-red-600/20`;
   }
   if (normalizedStatus === 'CAUTIOUSLY RECOMMENDED') {
@@ -141,8 +142,9 @@ const formatStatusLabel = (status) => {
   const s = (status || 'PENDING').toUpperCase();
   if (s === 'INVITED') return 'Invited';
   if (s === 'MANUALLY_INVITED' || s === 'MANUALLY INVITED') return 'Manual Invited';
-  if (s === 'CAUTIOUSLY_RECOMMENDED' || s === 'CAUTIOUSLY RECOMMENDED') return 'Caurshlu_Recommanded';
+  if (s === 'CAUTIOUSLY_RECOMMENDED' || s === 'CAUTIOUSLY RECOMMENDED') return 'Cautiously Recommended';
   if (s === 'NOT_RECOMMENDED' || s === 'NOT RECOMMENDED') return 'Rejected';
+  if (s === 'RESUME_REJECTED' || s === 'RESUME REJECTED') return 'Resume Rejected';
   if (s === 'RECOMMENDED') return 'Recommended';
   if (s === 'TEST_COMPLETED' || s === 'TEST COMPLETED') return 'Test Completed';
   if (s === 'PENDING') return 'Pending';
@@ -162,6 +164,15 @@ const formatDateTime = (dateString) => {
   }
 };
 
+const DetailItem = ({ label, value }) => (
+  <div className="flex flex-col gap-1 text-left">
+    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+    <div className="text-[13px] font-semibold text-slate-700 leading-snug">
+      {value || <span className="text-slate-300 italic">Not provided</span>}
+    </div>
+  </div>
+);
+
 const TestAssignments = ({ adminInfo: propAdminInfo }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -177,6 +188,15 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
   const [currentPage, setCurrentPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+
+  // Toast State
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  // Background Refresh State
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [fullCandidateDetails, setFullCandidateDetails] = useState(null);
+  const [candidateActivity, setCandidateActivity] = useState([]);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -214,11 +234,9 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      Object.keys(menuRefs.current).forEach((id) => {
-        if (menuRefs.current[id] && !menuRefs.current[id].contains(event.target)) {
-          setOpenMenuId(null);
-        }
-      });
+      if (openMenuId && menuRefs.current[openMenuId] && !menuRefs.current[openMenuId].contains(event.target)) {
+        setOpenMenuId(null);
+      }
     };
 
     if (openMenuId) {
@@ -282,6 +300,11 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
     }
   };
 
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
   const loadTestCandidates = async (forceReload = false) => {
     // Prevent duplicate calls
     if (isLoadingRef.current) {
@@ -296,7 +319,11 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
     isLoadingRef.current = true;
 
     try {
-      setLoading(true);
+      if (!forceReload || (forceReload && candidates.length === 0)) {
+        setLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
 
       // Get organizationId from adminInfo or localStorage
       const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
@@ -324,11 +351,11 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
       setCandidates(testCandidatesData); // Renamed testCandidates to candidates for consistency in render
 
     } catch (error) {
-      console.error("Error loading data:", error);
-      setCandidates([]);
-      alert("Failed to load candidates. Please try again.");
+      console.error("Error loading test candidates:", error);
+      if (!isRefreshing) setCandidates([]); // Only clear if full load fails
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
       isLoadingRef.current = false;
     }
   };
@@ -481,29 +508,62 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
     });
   };
 
-  const handleView = (candidate) => {
-    const id = candidate.id || candidate.candidateId;
-    if (id) {
-      navigate(`/dashboard/candidates/${id}`);
-    } else {
+  const handleView = async (candidate) => {
+    const id = candidate.candidateId || candidate.id;
+    if (!id) {
       console.error("Candidate ID not found", candidate);
-      alert("Unable to view candidate details: ID missing.");
+      showToast("Unable to view details: ID missing.", "error");
+      return;
+    }
+
+    try {
+      setLoadingDetails(true);
+      setShowDetailsDrawer(true);
+
+      // Fetch both candidate details and activity in parallel
+      const [details, activity] = await Promise.all([
+        candidateService.getCandidateById(id),
+        candidateService.getCandidateActivity(id)
+      ]);
+
+      // Merge with existing row data (candidate) to ensure no info is lost
+      setFullCandidateDetails({ ...candidate, ...details });
+      setCandidateActivity(activity || []);
+    } catch (error) {
+      console.error("Error fetching candidate details:", error);
+      showToast("Failed to fetch candidate details", "error");
+      setShowDetailsDrawer(false);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
   const handleResendInvite = async (candidate) => {
-    const id = candidate.id || candidate.candidateId;
+    const id = candidate.candidateId || candidate.id;
+    console.log("Resend Invite Clicked:", candidate);
+    console.log("Using ID:", id);
+
+    if (!id) {
+      alert("Error: Candidate ID is missing. Cannot resend invitation.");
+      console.error("Missing candidate ID for resend invite:", candidate);
+      return;
+    }
+
     try {
-      setLoading(true);
-      await candidateService.resendInvite(id);
-      alert("Invitation resent successfully");
-      loadTestCandidates(true);
+      // Don't set main loading here to avoid table reset
+      showToast("Sending invite...", "info"); // Immediate feedback
+      // Pass candidateId (UUID) and testAssignmentId (Assignment row ID)
+      // This ensures the backend updates the status for the SPECIFIC assignment clicked
+      const candidateUuid = candidate.candidateId || candidate.id;
+      const assignmentId = candidate.id;
+      await candidateService.resendInvite(candidateUuid, assignmentId);
+      showToast("Invitation resent successfully", "success");
+      loadTestCandidates(true); // Trigger background refresh
     } catch (error) {
       console.error("Error resending invite:", error);
-      alert(error?.response?.data?.error || "Failed to resend invitation");
-    } finally {
-      setLoading(false);
+      showToast(error?.response?.data?.error || "Failed to resend invitation", "error");
     }
+    // No finally block needed as loading handled by loadTestCandidates
   };
 
   const handleCSVFileSelect = (e) => {
@@ -534,7 +594,7 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
     // 2. Status Filter
     if (filters.status.length > 0) {
       filtered = filtered.filter(candidate =>
-        filters.status.includes((candidate.status || candidate.recommendationStatus || 'PENDING').toUpperCase())
+        filters.status.includes((candidate.recommendation || candidate.inviteStatus || candidate.status || 'PENDING').toUpperCase())
       );
     }
 
@@ -593,6 +653,15 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
         </div>
       </div>
 
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-md shadow-lg transform transition-all duration-300 ease-in-out flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}>
+          {toast.type === 'success' ? <RefreshCw className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+          <span className="text-sm font-medium">{toast.message}</span>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
         {/* Page Size Selector */}
         <div className="flex items-center space-x-2 flex-shrink-0">
@@ -627,9 +696,9 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
             onClick={() => loadTestCandidates(true)}
             title="Refresh Data"
             className="p-1.5 text-gray-500 hover:text-blue-700 hover:bg-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            disabled={loading}
+            disabled={loading || isRefreshing}
           >
-            <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 ${loading || isRefreshing ? 'animate-spin' : ''}`} />
           </button>
 
 
@@ -783,14 +852,13 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
             <thead className="sticky top-0 z-10 bg-qwikBlue shadow-sm">
               <tr className="rounded-md h-12 mb-4">
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-l-lg whitespace-nowrap">CANCODE</th>
-                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">NAME</th>
-                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">EMAIL</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">CANDIDATE</th>
+                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">REG NO</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">JOB TITLE</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">POSCODE</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">INVITED</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">RESUME SCORE</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">STATUS</th>
-                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue whitespace-nowrap">INVITE STATUS</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-r-lg whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
@@ -819,18 +887,16 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                   <tr key={candidate.id || candidate.candidateId} className="bg-white shadow-sm hover:shadow-md transition-shadow group rounded-md">
                     <>
                       <td className="px-4 py-2 text-center text-slate-900 font-medium text-xs rounded-l-lg border-l border-y border-gray-100">
-                        {candidate.code || candidate.candidateCode || (candidate.id ? String(candidate.id).substring(0, 8) : 'N/A')}
+                        {candidate.code || candidate.candidateCode || (candidate.candidateId ? String(candidate.candidateId).substring(0, 8) : 'N/A')}
                       </td>
-                      <td className="px-4 py-2 text-center text-xs border-y border-gray-100">
+                      <th scope="row" className="px-4 py-2 text-center text-xs border-y border-gray-100">
                         <div className="flex flex-col gap-0.5 items-center">
-                          <span className="text-slate-900 font-medium">{candidate.candidateName || candidate.fullName || candidate.name || 'N/A'}</span>
+                          <span className="text-slate-900 font-semibold">{candidate.candidateName || candidate.fullName || candidate.name || 'N/A'}</span>
+                          <span className="text-slate-500 text-[10px]">{candidate.email || 'N/A'}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-2 text-center text-xs border-y border-gray-100">
-                        <div className="flex flex-col gap-0.5 items-center">
-                          <span className="text-slate-900 font-medium">{candidate.email || 'N/A'}</span>
-                          <span className="text-slate-500 text-[10px]">{candidate.regNo || 'N/A'}</span>
-                        </div>
+                      </th>
+                      <td className="px-4 py-2 text-center text-slate-900 font-semibold text-xs border-y border-gray-100">
+                        {candidate.regNo || 'N/A'}
                       </td>
                       <td className="px-4 py-2 text-center text-slate-900 font-medium text-xs border-y border-gray-100">
                         {candidate.positionTitle || getPositionTitle(candidate.positionId) || 'N/A'}
@@ -845,13 +911,8 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
                         <ResumeScoreCircular score={candidate.resumeMatchScore || candidate.resumeScore} />
                       </td>
                       <td className="px-4 py-2 text-center border-y border-gray-100">
-                        <span className={`${getStatusBadgeClasses(candidate.recommendation || candidate.recommendationStatus || candidate.status)} px-3 py-1`}>
-                          {formatStatusLabel(candidate.recommendation || candidate.recommendationStatus || candidate.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-center border-y border-gray-100">
-                        <span className={`${getStatusBadgeClasses(candidate.inviteStatus || 'Not Invited')} px-3 py-1`}>
-                          {(candidate.inviteStatus || 'Not Invited').toUpperCase()}
+                        <span className={`${getStatusBadgeClasses(candidate.recommendation || 'PENDING')} px-3 py-1`}>
+                          {(candidate.recommendation || 'PENDING').toUpperCase().replace('_', ' ')}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-center rounded-r-lg border-r border-y border-gray-100">
@@ -1007,6 +1068,185 @@ const TestAssignments = ({ adminInfo: propAdminInfo }) => {
           </div>
         )}
       </div>
+
+      {createPortal(
+        <>
+          {showDetailsDrawer && (
+            <div className="fixed inset-0 z-[10000] overflow-hidden">
+              <div
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
+                onClick={() => setShowDetailsDrawer(false)}
+              />
+              <div className="absolute inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-slate-50 shadow-2xl transition-transform animate-in slide-in-from-right duration-300 border-l border-slate-200 flex flex-col">
+                <div className="px-6 py-5 bg-white border-b border-slate-200 flex items-center justify-between sticky top-0 z-10">
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900 leading-tight">Assignment Details</h2>
+                    <p className="text-[11px] font-medium text-slate-500 mt-1 uppercase tracking-wider">Comprehensive View</p>
+                  </div>
+                  <button
+                    onClick={() => setShowDetailsDrawer(false)}
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 pb-12">
+                  {loadingDetails ? (
+                    <div className="h-full flex flex-col items-center justify-center space-y-4">
+                      <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+                      <p className="text-xs font-bold text-slate-400">Fetching complete details...</p>
+                    </div>
+                  ) : fullCandidateDetails ? (
+                    <>
+                      <div className="space-y-4 text-left">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Basic Information
+                        </h3>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                          <div className="grid grid-cols-2 gap-4">
+                            <DetailItem label="Full Name" value={fullCandidateDetails.name || fullCandidateDetails.fullName} />
+                            <DetailItem label="Email Address" value={fullCandidateDetails.email} />
+                            <DetailItem label="Mobile Number" value={fullCandidateDetails.mobileNumber || fullCandidateDetails.phone} />
+                            <DetailItem label="Candidate Code" value={fullCandidateDetails.code} />
+                            <div className="col-span-2 capitalize">
+                              <DetailItem label="Address" value={fullCandidateDetails.address} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 pt-2 text-left">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Academic Background
+                        </h3>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                          <div className="grid grid-cols-2 gap-4">
+                            <DetailItem label="College" value={fullCandidateDetails.college || fullCandidateDetails.collegeName} />
+                            <DetailItem label="Degree" value={fullCandidateDetails.degree} />
+                            <DetailItem label="Stream" value={fullCandidateDetails.stream} />
+                            <DetailItem label="Semester" value={fullCandidateDetails.semester} />
+                            <DetailItem label="Academic Year" value={fullCandidateDetails.academicYearStart && fullCandidateDetails.academicYearEnd ? `${fullCandidateDetails.academicYearStart} - ${fullCandidateDetails.academicYearEnd}` : null} />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 pt-2 text-left">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Assignment Info
+                        </h3>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                          <div className="grid grid-cols-2 gap-4">
+                            <DetailItem label="Assigned Position" value={getPositionTitle(fullCandidateDetails.positionId) || "N/A"} />
+                            <DetailItem
+                              label="Current Status"
+                              value={
+                                <span className={getStatusBadgeClasses(fullCandidateDetails.recommendation || fullCandidateDetails.inviteStatus || fullCandidateDetails.status)}>
+                                  {formatStatusLabel(fullCandidateDetails.recommendation || fullCandidateDetails.inviteStatus || fullCandidateDetails.status)}
+                                </span>
+                              }
+                            />
+                            <DetailItem label="Experience" value={fullCandidateDetails.experience ? `${fullCandidateDetails.experience} Years` : null} />
+                            <DetailItem label="Registration Paid" value={fullCandidateDetails.registrationPaid ? "Yes" : "No"} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section: Test History */}
+                      {candidateActivity && candidateActivity.length > 0 && (
+                        <div className="space-y-4 pt-2 text-left">
+                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Test History
+                          </h3>
+                          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div className="divide-y divide-slate-100">
+                              {candidateActivity.map((activity, index) => (
+                                <div key={index} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                      <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                                        <ClipboardList className="h-4 w-4 text-purple-600" />
+                                      </div>
+                                      <div>
+                                        <div className="text-[13px] font-semibold text-slate-900 leading-tight">
+                                          {activity.testName}
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 font-medium mt-1">
+                                          Assigned on {formatDateTime(activity.assignedDate)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1.5 text-right">
+                                      <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-medium ring-1 ring-inset ${activity.status === 'COMPLETED'
+                                          ? 'bg-green-50 text-green-700 ring-green-600/20'
+                                          : 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
+                                        }`}>
+                                        {activity.status === 'COMPLETED' ? 'Completed' : 'Pending'}
+                                      </span>
+                                      {activity.rawStatus && (
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider font-bold">
+                                          {activity.rawStatus.replace('_', ' ')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(fullCandidateDetails.resumeMatchScore || fullCandidateDetails.resumeMatchAnalysis) && (
+                        <div className="space-y-4 pt-2">
+                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Evaluation Results
+                          </h3>
+                          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                            <div className="flex items-center gap-4">
+                              <ResumeScoreCircular score={fullCandidateDetails.resumeMatchScore} />
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Resume Match Score</span>
+                                <span className="text-sm font-bold text-slate-900">{fullCandidateDetails.resumeMatchScore}% Match</span>
+                              </div>
+                            </div>
+                            {fullCandidateDetails.resumeMatchAnalysis && (
+                              <div className="pt-2 border-t border-slate-100">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">AI Match Analysis</span>
+                                <p className="text-[12px] text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
+                                  "{fullCandidateDetails.resumeMatchAnalysis}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-4 pt-2">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400" /> System Metadata
+                        </h3>
+                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                          <div className="grid grid-cols-2 gap-4 text-left">
+                            <DetailItem label="System ID" value={fullCandidateDetails.id} />
+                            <DetailItem label="Added On" value={formatDateTime(fullCandidateDetails.createdAt || fullCandidateDetails.candidateCreatedAt)} />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                      <AlertTriangle className="h-12 w-12 text-amber-500 mb-4 opacity-20" />
+                      <p className="text-slate-500 font-medium">No details found for this candidate.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </>,
+        document.body
+      )}
     </div>
   );
 };

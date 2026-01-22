@@ -113,6 +113,9 @@ const getStatusBadgeClasses = (status) => {
   if (normalizedStatus === 'INVITED' || normalizedStatus === 'INVITE SENT') {
     return `${baseClasses} bg-purple-50 text-purple-700 ring-purple-600/20`;
   }
+  if (normalizedStatus === 'RE-INVITED' || normalizedStatus === 'RE-INVITE SENT' || normalizedStatus === 'REINVITED') {
+    return `${baseClasses} bg-purple-100 text-purple-800 ring-purple-600/30`;
+  }
   if (normalizedStatus === 'MANUAL INVITED' || normalizedStatus === 'MANUALLY INVITED' || normalizedStatus === 'MANUALLYINVITED') {
     return `${baseClasses} bg-cyan-100 text-cyan-700 ring-cyan-600/20`;
   }
@@ -127,7 +130,7 @@ const getStatusBadgeClasses = (status) => {
   if (normalizedStatus === 'RECOMMENDED') {
     return `${baseClasses} bg-green-50 text-green-700 ring-green-600/20`;
   }
-  if (normalizedStatus === 'NOT RECOMMENDED') {
+  if (normalizedStatus === 'NOT RECOMMENDED' || normalizedStatus === 'RESUME REJECTED') {
     return `${baseClasses} bg-red-50 text-red-700 ring-red-600/20`;
   }
   if (normalizedStatus === 'TEST COMPLETED') {
@@ -190,7 +193,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
   const [resendingInviteId, setResendingInviteId] = useState(null);
-  
+
   // Details Drawer State
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
   const [fullCandidateDetails, setFullCandidateDetails] = useState(null);
@@ -537,7 +540,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
 
       await candidateService.resendInvite(id);
       showMessage("Invitation resent successfully", "success");
-      
+
       // Refresh only the candidates data silently (without showing loading state)
       await loadCandidates(true, true);
     } catch (error) {
@@ -733,7 +736,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                     {/* Status Checkboxes */}
                     <div>
                       <span className="block text-gray-900 font-medium mb-1">Status</span>
-                      {['PENDING', 'INVITED', 'TEST_STARTED', 'IN_PROGRESS', 'TEST_COMPLETED', 'RECOMMENDED', 'CAUTIOUSLY_RECOMMENDED', 'NOT_RECOMMENDED', 'EXPIRED', 'UNATTENDED', 'NETWORK_DISCONNECTED'].map((status) => (
+                      {['ACTIVE', 'INACTIVE'].map((status) => (
                         <label key={status} className="flex items-center mt-1 text-gray-900 cursor-pointer hover:bg-slate-50 p-1 rounded">
                           <input
                             type="checkbox"
@@ -965,7 +968,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                           </button>
 
                           {openMenuId === (candidate.id || candidate.candidateId) && (
-                            <div 
+                            <div
                               className="absolute right-0 mt-8 w-40 bg-white rounded-md shadow-lg z-50 border border-gray-100 py-1 text-left animate-in fade-in zoom-in-95 duration-75"
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -1023,17 +1026,16 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                                     const normalizedStatus = normalizeLabel(candidate.status);
                                     const candidateId = candidate.id || candidate.candidateId;
                                     const isProcessing = resendingInviteId === candidateId;
-                                    
+
                                     if (normalizedStatus === 'MANUALLYINVITED' || isProcessing) {
                                       return;
                                     }
                                     handleResendInvite(candidate);
                                   }}
                                   disabled={normalizeLabel(candidate.status) === 'MANUALLYINVITED' || resendingInviteId === (candidate.id || candidate.candidateId)}
-                                  className={`w-full px-4 py-2 text-xs flex items-center gap-2 transition-colors ${
-                                    normalizeLabel(candidate.status) === 'MANUALLYINVITED' || resendingInviteId === (candidate.id || candidate.candidateId)
-                                      ? "text-gray-300 cursor-not-allowed bg-gray-50"
-                                      : "text-gray-700 hover:bg-green-50 hover:text-green-700"
+                                  className={`w-full px-4 py-2 text-xs flex items-center gap-2 transition-colors ${normalizeLabel(candidate.status) === 'MANUALLYINVITED' || resendingInviteId === (candidate.id || candidate.candidateId)
+                                    ? "text-gray-300 cursor-not-allowed bg-gray-50"
+                                    : "text-gray-700 hover:bg-green-50 hover:text-green-700"
                                     }`}
                                 >
                                   {resendingInviteId === (candidate.id || candidate.candidateId) ? (
@@ -1163,13 +1165,12 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                       <DetailItem label="Registration Number" value={fullCandidateDetails.regNo || "Not Provided"} />
                       <DetailItem label="Status"
                         value={
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                            (fullCandidateDetails.status || '').toUpperCase() === 'ACTIVE' || (fullCandidateDetails.status || '').toUpperCase() === 'TEST_COMPLETED'
-                              ? 'bg-green-50 text-green-700'
-                              : (fullCandidateDetails.status || '').toUpperCase() === 'INVITED' || (fullCandidateDetails.status || '').toUpperCase() === 'MANUALLY INVITED'
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${(fullCandidateDetails.status || '').toUpperCase() === 'ACTIVE' || (fullCandidateDetails.status || '').toUpperCase() === 'TEST_COMPLETED'
+                            ? 'bg-green-50 text-green-700'
+                            : (fullCandidateDetails.status || '').toUpperCase() === 'INVITED' || (fullCandidateDetails.status || '').toUpperCase() === 'MANUALLY INVITED'
                               ? 'bg-purple-50 text-purple-700'
                               : 'bg-gray-50 text-gray-700'
-                          }`}>
+                            }`}>
                             {(fullCandidateDetails.status || 'PENDING').toUpperCase()}
                           </span>
                         }
@@ -1207,30 +1208,30 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                         <DetailItem label="Registered" value={
                           fullCandidateDetails.hasLoggedIn || fullCandidateDetails.isRegistered
                             ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">
-                                <Check size={10} className="mr-1" /> Yes
-                              </span>
+                              <Check size={10} className="mr-1" /> Yes
+                            </span>
                             : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700">
-                                <X size={10} className="mr-1" /> No
-                              </span>
+                              <X size={10} className="mr-1" /> No
+                            </span>
                         } />
                         <DetailItem label="Last Login" value={
                           fullCandidateDetails.lastLogin
                             ? new Date(fullCandidateDetails.lastLogin).toLocaleString('en-GB', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
                             : "Never"
                         } icon={<Calendar size={10} />} />
                         <DetailItem label="Created At" value={
                           fullCandidateDetails.createdAt || fullCandidateDetails.candidateCreatedAt
                             ? new Date(fullCandidateDetails.createdAt || fullCandidateDetails.candidateCreatedAt).toLocaleDateString('en-GB', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                              })
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric'
+                            })
                             : "N/A"
                         } />
                         <DetailItem label="Registration Paid" value={
@@ -1251,8 +1252,8 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                         <DetailItem label="Resume File" value={
                           <a
-                            href={fullCandidateDetails.resumePath?.startsWith('http') 
-                              ? fullCandidateDetails.resumePath 
+                            href={fullCandidateDetails.resumePath?.startsWith('http')
+                              ? fullCandidateDetails.resumePath
                               : `/api/resumes/${fullCandidateDetails.resumePath || fullCandidateDetails.resumeFilename}`}
                             target="_blank"
                             rel="noopener noreferrer"

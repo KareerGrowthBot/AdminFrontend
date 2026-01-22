@@ -58,7 +58,7 @@ const statsKeyToDisplayLabelMap = {
     "UNATTENDED": "Unattended",
     "CANCELED": "Cancelled",
     "IN_PROGRESS": "In Progress",
-    "RESUME_REJECTED": "Resume Rejected",
+    "RESUME_REJECTED": "Rejected",
     "CAUTIOUSLY_RECOMMENDED": "Cautiously Recommended",
     "UNATTACHED": "Unattached",
     "NETWORK_DISCONNECTED": "Network Disconnected",
@@ -69,35 +69,33 @@ const statsKeyToDisplayLabelMap = {
 };
 
 const statsDisplayOrder = [
-    "Recommended",
-    "Pending",
     "Invited",
-    "Re Invited",
-    "Resume Rejected",
-    "Cautiously Recommended",
+    "Manually Invited",
+    "Rejected",
+    "Recommended",
     "Not Recommended",
+    "Cautiously Recommended",
     "Test Completed",
     "Test Started",
-    "Manually Invited",
 ];
 
 // Color scheme for different status types
 const statusColors = {
-    "Recommended": { primary: "#10B981", secondary: "#D1FAE5", icon: CheckCircle },
+    "Recommended": { primary: "#10B981", secondary: "#ECFDF5", icon: CheckCircle }, // Green
     "Pending": { primary: "#F59E0B", secondary: "#FEF3C7", icon: Clock },
-    "Invited": { primary: "#3B82F6", secondary: "#DBEAFE", icon: Users },
-    "Re Invited": { primary: "#8B5CF6", secondary: "#EDE9FE", icon: UserCheck },
-    "Unattended": { primary: "#EF4444", secondary: "#FEE2E2", icon: UserX },
+    "Invited": { primary: "#8B5CF6", secondary: "#F5F3FF", icon: Users }, // Purple
+    "Re Invited": { primary: "#A78BFA", secondary: "#F5F3FF", icon: UserCheck },
+    "Unattended": { primary: "#EF4444", secondary: "#FEF2F2", icon: UserX },
     "Cancelled": { primary: "#6B7280", secondary: "#F3F4F6", icon: XCircle },
     "In Progress": { primary: "#06B6D4", secondary: "#CFFAFE", icon: PlayCircle },
-    "Resume Rejected": { primary: "#DC2626", secondary: "#FEE2E2", icon: FileText },
-    "Cautiously Recommended": { primary: "#F97316", secondary: "#FED7AA", icon: AlertCircle },
-    "Unattached": { primary: "#8B5CF6", secondary: "#EDE9FE", icon: UserX },
-    "Network Disconnected": { primary: "#EF4444", secondary: "#FEE2E2", icon: WifiOff },
-    "Not Recommended": { primary: "#DC2626", secondary: "#FEE2E2", icon: XCircle },
-    "Test Completed": { primary: "#059669", secondary: "#D1FAE5", icon: CheckCircle },
-    "Test Started": { primary: "#7C3AED", secondary: "#EDE9FE", icon: PlayCircle },
-    "Manually Invited": { primary: "#2563EB", secondary: "#DBEAFE", icon: Users },
+    "Rejected": { primary: "#EF4444", secondary: "#FEF2F2", icon: FileText }, // Red
+    "Cautiously Recommended": { primary: "#FDE047", secondary: "#FEFCE8", icon: AlertCircle }, // Light Yellow
+    "Unattached": { primary: "#8B5CF6", secondary: "#F5F3FF", icon: UserX },
+    "Network Disconnected": { primary: "#EF4444", secondary: "#FEF2F2", icon: WifiOff },
+    "Not Recommended": { primary: "#DC2626", secondary: "#FEF2F2", icon: XCircle }, // Red (Darker)
+    "Test Completed": { primary: "#F97316", secondary: "#FFF7ED", icon: CheckCircle }, // Orange
+    "Test Started": { primary: "#EAB308", secondary: "#FEFCE8", icon: PlayCircle }, // Yellow
+    "Manually Invited": { primary: "#3B82F6", secondary: "#EFF6FF", icon: Users }, // Blue
 };
 
 const MainDashboard = ({ adminInfo }) => {
@@ -116,6 +114,9 @@ const MainDashboard = ({ adminInfo }) => {
     const [dashboardStats, setDashboardStats] = useState(null);
     const [dashboardStatsLoading, setDashboardStatsLoading] = useState(true);
     const [dashboardStatsError, setDashboardStatsError] = useState(null);
+    const [recommendationStatsData, setRecommendationStatsData] = useState(null);
+    const [recommendationStatsLoading, setRecommendationStatsLoading] = useState(false);
+    const [recommendationStatsError, setRecommendationStatsError] = useState(null);
 
     const [selectedPositionId, setSelectedPositionId] = useState(null);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -194,6 +195,45 @@ const MainDashboard = ({ adminInfo }) => {
             setSelectedPositionId(null);
         }
     }, [jobRoles, jobRolesLoading, jobRolesError, selectedPositionId]);
+    // Fetch Recommendation Stats when selectedPositionId changes
+    useEffect(() => {
+        const loadRecommendationStats = async () => {
+            if (!organizationId || !selectedPositionId) {
+                setRecommendationStatsData(null);
+                return;
+            }
+            setRecommendationStatsLoading(true);
+            try {
+                const data = await dashboardService.getPositionRecommendationStats(organizationId, selectedPositionId);
+                if (data && data.labels && data.data) {
+                    // Convert back to object format for existing prepareDetailedStatsData/formatChartData logic
+                    const statsObject = {};
+                    data.labels.forEach((label, index) => {
+                        // Find the original API key for this label if possible, or use as is
+                        let apiKey = label;
+                        for (const key in statsKeyToDisplayLabelMap) {
+                            if (statsKeyToDisplayLabelMap[key] === label) {
+                                apiKey = key;
+                                break;
+                            }
+                        }
+                        statsObject[apiKey] = data.data[index];
+                    });
+                    setRecommendationStatsData(statsObject);
+                } else {
+                    setRecommendationStatsData(null);
+                }
+                setRecommendationStatsError(null);
+            } catch (err) {
+                console.error("Error fetching position recommendation stats:", err);
+                setRecommendationStatsError(err);
+                setRecommendationStatsData(null);
+            } finally {
+                setRecommendationStatsLoading(false);
+            }
+        };
+        loadRecommendationStats();
+    }, [organizationId, selectedPositionId]);
 
 
 
@@ -317,9 +357,9 @@ const MainDashboard = ({ adminInfo }) => {
         return chartDataArray;
     };
 
-    // Chart data disabled - recommendation stats removed
-    const chartData = [];
-    const pieChartData = [];
+    // Chart data enabled
+    const chartData = formatChartData(recommendationStatsData);
+    const pieChartData = chartData.filter(d => d.value > 0);
 
     const prepareDetailedStatsData = (statsObject) => {
         if (!statsObject) {
@@ -328,7 +368,8 @@ const MainDashboard = ({ adminInfo }) => {
         // Filter out unwanted statuses
         const unwantedStatuses = [
             "UNATTENDED", "CANCELED", "IN_PROGRESS", "UNATTACHED", "NETWORK_DISCONNECTED",
-            "EXPIRED", "TECHNICAL_ISSUE", "RESUME_ANALYZING", "TEST_ABANDONED", "AWAITING_EVALUATION"
+            "EXPIRED", "TECHNICAL_ISSUE", "RESUME_ANALYZING", "TEST_ABANDONED", "AWAITING_EVALUATION",
+            "PENDING", "REINVITED"
         ];
 
         const detailedStatsArray = Object.keys(statsObject)
@@ -357,8 +398,8 @@ const MainDashboard = ({ adminInfo }) => {
         return detailedStatsArray;
     };
 
-    // Detailed stats disabled - recommendation stats removed
-    const detailedStatsData = [];
+    // Detailed stats enabled
+    const detailedStatsData = prepareDetailedStatsData(recommendationStatsData);
 
     const simpleFormatYTick = (tick) => {
         if (Number.isInteger(tick) && tick >= 0) {
@@ -395,6 +436,29 @@ const MainDashboard = ({ adminInfo }) => {
             );
         }
         return null;
+    };
+
+    // Custom tick for horizontal multi-line labels
+    const CustomXAxisTick = ({ x, y, payload }) => {
+        const words = payload.value.split(' ');
+        return (
+            <g transform={`translate(${x},${y})`}>
+                {words.map((word, index) => (
+                    <text
+                        key={index}
+                        x={0}
+                        y={index * 12}
+                        dy={12}
+                        textAnchor="middle"
+                        fill="#6b7280"
+                        fontSize={9}
+                        fontWeight={500}
+                    >
+                        {word}
+                    </text>
+                ))}
+            </g>
+        );
     };
 
     return (
@@ -626,13 +690,93 @@ const MainDashboard = ({ adminInfo }) => {
                     </div>
                 </div>
 
-                {/* Charts Section - Disabled (recommendation stats removed) */}
-                <div className="flex justify-center items-center h-72 text-gray-500">
-                    <div className="text-center">
-                        <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                        <p>Analytics temporarily unavailable</p>
+                {/* Charts Section */}
+                {recommendationStatsLoading ? (
+                    <div className="flex justify-center items-center h-72">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                     </div>
-                </div>
+                ) : recommendationStatsError ? (
+                    <div className="flex justify-center items-center h-72 text-red-500">
+                        <p>Error loading analytics. Please try again later.</p>
+                    </div>
+                ) : !recommendationStatsData || Object.keys(recommendationStatsData).length === 0 ? (
+                    <div className="flex justify-center items-center h-72 text-gray-500">
+                        <div className="text-center">
+                            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                            <p>No analytics data available for this position</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="space-y-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-80 lg:col-span-1">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-4">Distribution by Status</h4>
+                                <ResponsiveContainer width="100%" height="90%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieChartData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={80}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {pieChartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomPieTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm h-80 lg:col-span-2">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-4">Recommendation Trend</h4>
+                                <ResponsiveContainer width="100%" height="90%">
+                                    <BarChart data={chartData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                                        <XAxis
+                                            dataKey="name"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={<CustomXAxisTick />}
+                                            interval={0}
+                                            height={60}
+                                        />
+                                        <YAxis
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{ fontSize: 10, fill: '#6b7280' }}
+                                            tickFormatter={simpleFormatYTick}
+                                        />
+                                        <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f9fafb' }} />
+                                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                            {chartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Detailed Stats Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {detailedStatsData.map((stat) => (
+                                <div key={stat.apiKey} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="p-2 rounded-lg" style={{ backgroundColor: stat.colors.secondary }}>
+                                            <stat.colors.icon size={16} style={{ color: stat.colors.primary }} />
+                                        </div>
+                                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
+                                    </div>
+                                    <h4 className="text-xl font-bold text-gray-900">{stat.value}</h4>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

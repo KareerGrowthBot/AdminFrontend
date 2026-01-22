@@ -202,8 +202,44 @@ export const candidateService = {
     return response.data;
   },
 
-  resendInvite: async (candidateId) => {
-    const response = await apiClient.post(API_ENDPOINTS.RESEND_INVITE, { candidateId });
+  resendInvite: async (candidateId, testAssignmentId = null) => {
+    const payload = { candidateId };
+    if (testAssignmentId) payload.testAssignmentId = testAssignmentId;
+    const response = await apiClient.post(API_ENDPOINTS.RESEND_INVITE, payload);
+    return response.data;
+  },
+
+  /**
+   * Generate public registration link for a position
+   * @param {object} linkData - {positionId, questionSetId, linkExpiresInDays}
+   * @returns {Promise<{publicLink: string}>}
+   */
+  generatePublicLink: async (linkData) => {
+    const response = await apiClient.post(API_ENDPOINTS.GENERATE_PUBLIC_LINK, linkData);
+    return response.data;
+  },
+
+  /**
+   * Get existing public registration link for a position
+   * @param {object} linkData - {positionId, questionSetId, linkExpiresInDays}
+   * @returns {Promise<{publicLink: string, exists: boolean}>}
+   */
+  getExistingPublicLink: async (linkData) => {
+    const queryParams = new URLSearchParams({
+      positionId: linkData.positionId,
+      questionSetId: linkData.questionSetId,
+      linkExpiresInDays: linkData.linkExpiresInDays.toString()
+    });
+    const response = await apiClient.get(`${API_ENDPOINTS.GET_EXISTING_PUBLIC_LINK}?${queryParams}`);
+    return response.data;
+  },
+  /**
+   * Get candidate's test activity history
+   * @param {string} id - Candidate UUID
+   * @returns {Promise<Array>}
+   */
+  getCandidateActivity: async (id) => {
+    const response = await apiClient.get(`${API_ENDPOINTS.GET_ALL_CANDIDATES}/${id}/activity`);
     return response.data;
   },
 };

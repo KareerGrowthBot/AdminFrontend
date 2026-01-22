@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Home, Users, UserPlus, Settings, Briefcase, Shield, FileText, Search, Edit, Eye, Trash2, X, Check, XCircle, AlertCircle, ToggleLeft, ToggleRight, Loader, RefreshCw, Filter, Plus, MoreVertical } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Home, Users, UserPlus, Settings, Briefcase, Shield, FileText, Search, Edit, Eye, Trash2, X, Check, XCircle, AlertCircle, ToggleLeft, ToggleRight, Loader, RefreshCw, Filter, Plus, MoreVertical, BookOpen, Download } from "lucide-react";
 import { positionService } from "../../services/positionService";
 import { questionSetService } from "../../services/questionSetService";
 import { hasPermission } from "../../utils/permissions";
@@ -8,9 +9,8 @@ import PositionForm from "./PositionForm";
 import SnackbarAlert from "../common/SnackbarAlert";
 import { useSubscription } from "../../providers/SubscriptionProvider";
 import AccessDenied from "../common/AccessDenied";
-import SubscriptionExpired from "../common/SubscriptionExpired";
 import PermissionWrapper from "../common/PermissionWrapper";
-import { BookOpen } from "lucide-react";
+// Removed duplicate BookOpen import
 
 const Positions = () => {
   const navigate = useNavigate();
@@ -21,7 +21,9 @@ const Positions = () => {
   const [editingPosition, setEditingPosition] = useState(null);
   const [viewingPosition, setViewingPosition] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [fullPositionDetails, setFullPositionDetails] = useState(null);
   // Pagination State
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
@@ -127,14 +129,18 @@ const Positions = () => {
     setShowForm(true);
   };
 
-  const handleView = async (position) => {
+  const handleViewDetails = async (positionId) => {
     try {
-      const positionDetails = await positionService.getPositionById(position.id);
-      setViewingPosition(positionDetails);
-      setShowViewModal(true);
+      setLoadingDetails(true);
+      setShowDetailsDrawer(true);
+      const data = await positionService.getPositionById(positionId);
+      setFullPositionDetails(data);
     } catch (error) {
-      console.error("Error loading position details:", error);
-      showMessage("Failed to load position details", "error");
+      console.error("Error fetching position full details:", error);
+      showMessage("Failed to fetch position details", "error");
+      setShowDetailsDrawer(false);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -366,31 +372,31 @@ const Positions = () => {
                 currentTableData.map((position) => {
                   return (
                     <tr key={position.id} className="bg-white shadow-sm hover:shadow-md transition-shadow group rounded-md">
-                      <td className="px-6 py-2 rounded-l-lg border-l border-y border-gray-100 text-xs font-medium text-gray-900">{position.code}</td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-gray-700">{position.title}</td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-gray-700">{position.domainType || "-"}</td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-center">
+                      <td className="px-6 py-2 rounded-l-lg border-l border-y border-gray-100 text-[11px] font-medium text-slate-900">{position.code}</td>
+                      <td className="px-6 py-2 border-y border-gray-100 text-[11px] text-slate-600">{position.title}</td>
+                      <td className="px-6 py-2 border-y border-gray-100 text-[11px] text-slate-600">{position.domainType || "-"}</td>
+                      <td className="px-6 py-2 border-y border-gray-100 text-center">
                         <span className={getStatusBadgeClasses(position.positionStatus)}>
                           {(position.positionStatus || "OPEN").toUpperCase()}
                         </span>
                       </td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-gray-700 text-center">{position.interviewInviteSent || 0}</td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-gray-700 text-center">{position.completedInterviews || 0}</td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-gray-700 text-center">{position.noOfPositions || "-"}</td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-gray-700 text-center">
+                      <td className="px-6 py-2 border-y border-gray-100 text-[11px] text-slate-600 text-center">{position.interviewInviteSent || 0}</td>
+                      <td className="px-6 py-2 border-y border-gray-100 text-[11px] text-slate-600 text-center">{position.completedInterviews || 0}</td>
+                      <td className="px-6 py-2 border-y border-gray-100 text-[11px] text-slate-600 text-center">{position.noOfPositions || "-"}</td>
+                      <td className="px-6 py-2 border-y border-gray-100 text-[11px] text-slate-600 text-center">
                         {position.minimumExperience || 0} - {position.maximumExperience || "∞"} yrs
                       </td>
-                      <td className="px-6 py-2 border-y border-gray-100 text-xs text-center">
+                      <td className="px-6 py-2 border-y border-gray-100 text-center">
                         <button
                           onClick={() => handleManageQuestions(position.id)}
-                          className="flex items-center gap-1.5 text-blue-600 hover:text-blue-800 transition-colors"
+                          className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-800 transition-colors"
                           title="Manage Question Sets"
                         >
-                          <BookOpen size={16} />
-                          <span className="text-xs font-medium">Questions</span>
+                          <BookOpen size={14} />
+                          <span className="text-[11px] font-semibold">Questions</span>
                         </button>
                       </td>
-                      <td className="px-6 py-2 rounded-r-lg border-r border-y border-gray-100 text-xs">
+                      <td className="px-6 py-2 rounded-r-lg border-r border-y border-gray-100 text-center relative">
                         <div className="flex justify-center items-center action-menu-container relative">
                           <button
                             onClick={(e) => {
@@ -408,12 +414,12 @@ const Positions = () => {
                               style={{ top: '100%', right: '10px' }}>
                               <button
                                 onClick={() => {
-                                  handleView(position);
+                                  handleViewDetails(position.id);
                                   setActiveActionMenu(null);
                                 }}
-                                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+                                className="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors text-left"
                               >
-                                <Eye size={14} />
+                                <Eye size={12} />
                                 <span>View Details</span>
                               </button>
 
@@ -423,9 +429,9 @@ const Positions = () => {
                                     handleEdit(position);
                                     setActiveActionMenu(null);
                                   }}
-                                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+                                  className="flex items-center gap-2 w-full px-3 py-1.5 text-[11px] text-gray-700 hover:bg-gray-50 hover:text-blue-600 transition-colors text-left"
                                 >
-                                  <Edit size={14} />
+                                  <Edit size={12} />
                                   <span>Edit Position</span>
                                 </button>
                               </PermissionWrapper>
@@ -436,19 +442,19 @@ const Positions = () => {
                                   setActiveActionMenu(null);
                                 }}
                                 disabled={togglingStatus}
-                                className={`flex items-center gap-2 w-full px-3 py-1.5 text-xs transition-colors text-left ${position.positionStatus === "ACTIVE"
-                                  ? 'text-amber-700 hover:bg-amber-50 hover:text-amber-800'
-                                  : 'text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800'
+                                className={`flex items-center gap-2 w-full px-3 py-1.5 text-[11px] hover:bg-gray-50 transition-colors text-left ${position.positionStatus === "ACTIVE"
+                                  ? 'text-amber-600 hover:text-amber-700'
+                                  : 'text-emerald-600 hover:text-emerald-700'
                                   }`}
                               >
                                 {position.positionStatus === "ACTIVE" ? (
                                   <>
-                                    <ToggleRight size={14} />
+                                    <ToggleRight size={12} />
                                     <span>Deactivate</span>
                                   </>
                                 ) : (
                                   <>
-                                    <ToggleLeft size={14} />
+                                    <ToggleLeft size={12} />
                                     <span>Activate</span>
                                   </>
                                 )}
@@ -528,77 +534,176 @@ const Positions = () => {
 
 
 
-      {/* View Position Modal */}
-      {
-        showViewModal && viewingPosition && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-              <div className="flex justify-between items-center p-4 border-b border-gray-200">
-                <h2 className="text-sm font-bold text-navy-900">Position Details</h2>
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    setViewingPosition(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X size={20} />
-                </button>
+      {/* Position Details Drawer - Rendered via Portal */}
+      {showDetailsDrawer && createPortal(
+        <div className="fixed inset-0 z-[10000] overflow-hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
+            onClick={() => setShowDetailsDrawer(false)}
+          />
+
+          {/* Drawer Content */}
+          <div className="absolute inset-y-0 right-0 w-full sm:w-[500px] md:w-[600px] bg-slate-50 shadow-2xl transition-transform animate-in slide-in-from-right duration-300 border-l border-slate-200 flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-5 bg-white border-b border-slate-200 flex items-center justify-between sticky top-0 z-10">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 leading-tight">Position Details</h2>
+                <p className="text-[11px] font-medium text-slate-500 mt-1 uppercase tracking-wider">Comprehensive View</p>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-600">Code</label>
-                    <p className="text-[10px] text-gray-900 mt-1">{viewingPosition.code || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-600">Title</label>
-                    <p className="text-[10px] text-gray-900 mt-1">{viewingPosition.title || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-600">Domain</label>
-                    <p className="text-[10px] text-gray-900 mt-1">{viewingPosition.domainType || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-600">Status</label>
-                    <p className="text-[10px] mt-1">
-                      <span className={`px-2 py-1 text-[9px] font-semibold rounded-full ${viewingPosition.positionStatus === "ACTIVE"
-                        ? "bg-green-100 text-green-800"
-                        : viewingPosition.positionStatus === "CLOSED"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-yellow-100 text-yellow-800"
-                        }`}>
-                        {viewingPosition.positionStatus || "DRAFT"}
-                      </span>
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-600">Number of Positions</label>
-                    <p className="text-[10px] text-gray-900 mt-1">{viewingPosition.noOfPositions || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-gray-600">Experience</label>
-                    <p className="text-[10px] text-gray-900 mt-1">
-                      {viewingPosition.minimumExperience || 0} - {viewingPosition.maximumExperience || "∞"} yrs
-                    </p>
-                  </div>
+              <button
+                onClick={() => setShowDetailsDrawer(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 pb-12">
+              {loadingDetails ? (
+                <div className="h-full flex flex-col items-center justify-center space-y-4">
+                  <div className="w-10 h-10 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
+                  <p className="text-xs font-bold text-slate-400">Fetching complete details...</p>
                 </div>
-              </div>
-              <div className="p-4 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    setViewingPosition(null);
-                  }}
-                  className="w-full px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white font-medium rounded-lg transition duration-200 text-[10px]"
-                >
-                  Close
-                </button>
-              </div>
+              ) : fullPositionDetails ? (
+                <>
+                  {/* Section: Basic Info */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Basic Information
+                    </h3>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                      <div className="grid grid-cols-2 gap-4">
+                        <DetailItem label="Position Title" value={fullPositionDetails.title} />
+                        <DetailItem label="Position Code" value={fullPositionDetails.code} />
+                        <DetailItem label="Domain" value={fullPositionDetails.domainType} />
+                        <DetailItem label="Status"
+                          value={
+                            <span className={getStatusBadgeClasses(fullPositionDetails.positionStatus)}>
+                              {(fullPositionDetails.positionStatus || "OPEN").toUpperCase()}
+                            </span>
+                          }
+                        />
+                        <DetailItem label="Created At" value={fullPositionDetails.createdAt} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section: Requirements */}
+                  <div className="space-y-4 pt-2">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Requirements & Quota
+                    </h3>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                        <DetailItem label="Openings" value={fullPositionDetails.noOfPositions} />
+                        <DetailItem label="Experience Range" value={`${fullPositionDetails.minimumExperience || 0} - ${fullPositionDetails.maximumExperience || "∞"} yrs`} />
+                        <DetailItem label="Expected Start" value={fullPositionDetails.expectedStartDate} />
+                        <DetailItem label="Application Deadline" value={fullPositionDetails.applicationDeadline} />
+                        <DetailItem label="Interviews Invited" value={fullPositionDetails.interviewInviteSent || 0} />
+                        <DetailItem label="Interviews Completed" value={fullPositionDetails.completedInterviews || 0} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section: Skills */}
+                  <div className="space-y-4 pt-2">
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-teal-500" /> Skills & Qualifications
+                    </h3>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block mb-2">Mandatory Skills</span>
+                        <div className="flex flex-wrap gap-2">
+                          {fullPositionDetails.mandatorySkills?.length > 0 ? (
+                            fullPositionDetails.mandatorySkills.map((skill, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-medium rounded-md border border-blue-100">
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No mandatory skills listed</span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter block mb-2">Optional Skills</span>
+                        <div className="flex flex-wrap gap-2">
+                          {fullPositionDetails.optionalSkills?.length > 0 ? (
+                            fullPositionDetails.optionalSkills.map((skill, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-slate-50 text-slate-600 text-[10px] font-medium rounded-md border border-slate-200">
+                                {skill}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">No optional skills listed</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section: Description & JD */}
+                  {(fullPositionDetails.jobDescription || fullPositionDetails.jobDescriptionDocumentPath) && (
+                    <div className="space-y-4 pt-2">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Job Description
+                      </h3>
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                        {fullPositionDetails.jobDescriptionDocumentPath && (
+                          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                            <div className="flex items-center gap-2">
+                              <FileText size={16} className="text-slate-400" />
+                              <span className="text-xs font-medium text-slate-700 truncate max-w-[200px]">
+                                {fullPositionDetails.jobDescriptionDocumentFileName || "JD_Document.pdf"}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                const pathParts = fullPositionDetails.jobDescriptionDocumentPath.split("/");
+                                if (pathParts.length >= 2) {
+                                  const subfolder = pathParts[0];
+                                  const filename = pathParts.slice(1).join("/");
+                                  const url = `${window.location.protocol}//${window.location.host.includes('localhost') ? 'localhost:8080' : window.location.host}/api/files/download/${subfolder}/${filename}`;
+                                  window.open(url, "_blank");
+                                }
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1 bg-white border border-slate-200 text-blue-600 text-[10px] font-bold rounded hover:bg-blue-50 transition-colors shadow-sm"
+                            >
+                              <Download size={14} /> Download JD
+                            </button>
+                          </div>
+                        )}
+                        {fullPositionDetails.jobDescription && (
+                          <div className="prose prose-sm max-w-none text-slate-600 text-xs leading-relaxed whitespace-pre-wrap">
+                            {fullPositionDetails.jobDescription}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Section: Internal Notes */}
+                  {fullPositionDetails.internalNotes && (
+                    <div className="space-y-4 pt-2">
+                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Internal Notes
+                      </h3>
+                      <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100/50">
+                        <p className="text-xs text-amber-800 leading-relaxed italic">
+                          "{fullPositionDetails.internalNotes}"
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : null}
             </div>
           </div>
-        )
-      }
+        </div>,
+        document.body
+      )}
 
       <SnackbarAlert
         open={snackbar.open}
@@ -795,5 +900,13 @@ const Positions = () => {
     </div>
   );
 };
+
+// Helper component for detail items
+const DetailItem = ({ label, value }) => (
+  <div className="flex flex-col gap-0.5">
+    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{label}</span>
+    <span className="text-xs font-semibold text-slate-800 break-words">{value || "—"}</span>
+  </div>
+);
 
 export default Positions;
