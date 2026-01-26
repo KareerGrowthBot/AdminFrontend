@@ -8,6 +8,7 @@ import SnackbarAlert from "./components/common/SnackbarAlert";
 import { authService } from "./services/authService";
 import { roleService } from "./services/roleService";
 import { clearAuthCookies } from "./utils/cookieUtils";
+import { clearTokens } from "./utils/tokenStorage";
 import { clearUserInfo } from "./utils/storageUtils";
 import { setSessionCheckFlag } from "./config/axiosConfig";
 import { hasPermission } from "./utils/permissions";
@@ -178,6 +179,7 @@ const App = () => {
 
         if (isAuthError) {
           // Silently handle expected auth errors during session check - no logging
+          clearTokens();
           clearAuthCookies();
         } else {
           // Only log unexpected errors (network issues, etc.) - but suppress for session check
@@ -262,7 +264,7 @@ const App = () => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      // Clear all cookies
+      clearTokens();
       clearAuthCookies();
 
       // Clear all localStorage

@@ -1,44 +1,59 @@
 import apiClient from "./apiService";
 import { API_ENDPOINTS } from "../constants/api";
+import { setTokens, getRefreshToken, clearTokens } from "../utils/tokenStorage";
 
 /**
  * Authentication service - handles all auth-related API calls
  */
 export const authService = {
   /**
-   * Login with email and password
+   * Login with email and password. Stores accessToken and refreshToken in localStorage.
    * @param {string} email
    * @param {string} password
-   * @returns {Promise<{message: string, admin: object}>}
+   * @returns {Promise<{message: string, admin: object, accessToken?: string, refreshToken?: string}>}
    */
   login: async (email, password) => {
     const response = await apiClient.post(API_ENDPOINTS.LOGIN, {
       email,
       password
     });
+    const data = response.data;
     // Normalize response: extract first element if admin is an array
-    if (response.data && response.data.admin && Array.isArray(response.data.admin)) {
-      response.data.admin = response.data.admin[0];
+    if (data && data.admin && Array.isArray(data.admin)) {
+      data.admin = data.admin[0];
     }
-    return response.data;
+    if (data.accessToken != null || data.refreshToken != null) {
+      setTokens(data.accessToken ?? null, data.refreshToken ?? null);
+    }
+    return data;
   },
 
   /**
-   * Logout the current admin
+   * Logout the current admin. Clears stored tokens.
    * @returns {Promise<{message: string}>}
    */
   logout: async () => {
-    const response = await apiClient.post(API_ENDPOINTS.LOGOUT);
-    return response.data;
+    try {
+      await apiClient.post(API_ENDPOINTS.LOGOUT);
+    } finally {
+      clearTokens();
+    }
+    return { message: "Logged out" };
   },
 
   /**
-   * Refresh access token using refresh token
-   * @returns {Promise<{message: string, email: string}>}
+   * Refresh access token using refreshToken from localStorage.
+   * @returns {Promise<{accessToken?: string, refreshToken?: string}>}
    */
   refreshToken: async () => {
-    const response = await apiClient.post(API_ENDPOINTS.REFRESH_TOKEN);
-    return response.data;
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) throw new Error("No refresh token");
+    const response = await apiClient.post(API_ENDPOINTS.REFRESH_TOKEN, { refreshToken });
+    const data = response.data;
+    if (data.accessToken != null || data.refreshToken != null) {
+      setTokens(data.accessToken ?? null, data.refreshToken ?? null);
+    }
+    return data;
   },
 
   /**

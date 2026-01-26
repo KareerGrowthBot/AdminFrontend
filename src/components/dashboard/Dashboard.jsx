@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Home, Users, UserPlus, Settings, Briefcase, Shield, FileText, MessageSquare } from "lucide-react";
 import { authService } from "../../services/authService";
 import { clearAuthCookies } from "../../utils/cookieUtils";
+import { clearTokens } from "../../utils/tokenStorage";
 import { clearUserInfo } from "../../utils/storageUtils";
 import { hasPermission, hasAnyPermission } from "../../utils/permissions";
 import Layout from "./Layout";
@@ -90,13 +91,12 @@ const Dashboard = ({ adminInfo, onLogout }) => {
   const handleLogout = async () => {
     try {
       await authService.logout();
-      clearAuthCookies();
-      clearUserInfo(); // Clear userId, organizationId, dbName, roleName, etc. from localStorage
-      onLogout();
     } catch (error) {
       console.error("Logout error:", error);
+    } finally {
+      clearTokens();
       clearAuthCookies();
-      clearUserInfo(); // Clear userId, organizationId, dbName, roleName, etc. from localStorage
+      clearUserInfo();
       onLogout();
     }
   };

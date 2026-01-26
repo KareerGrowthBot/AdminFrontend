@@ -3,10 +3,10 @@
  */
 import axios from 'axios';
 import { getXSRFToken } from '../utils/csrf';
-import { getRefreshToken } from '../utils/refreshToken';
 import { clearAuthCookies } from '../utils/cookieUtils';
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from '../utils/tokenStorage';
 import { logRequest, logResponse, logError } from '../store/middleware/loggerMiddleware';
-import { API_BASE_URL } from '../constants/api';
+import { API_BASE_URL, API_ENDPOINTS } from '../constants/api';
 
 // Flag to prevent redirects during session check
 let isCheckingSession = false;
@@ -50,6 +50,17 @@ axiosInstance.interceptors.request.use(
     
     // Add frontend type identifier to differentiate cookies between frontends
     config.headers['X-Frontend-Type'] = 'admin';
+    
+    // Use Bearer token from localStorage (AdminFrontend token-based auth)
+    const u = (config.url || '').split('?')[0];
+    const isLogin = u.includes(API_ENDPOINTS.LOGIN) || u.endsWith('/auth/login');
+    const isRefresh = u.includes(API_ENDPOINTS.REFRESH_TOKEN) || u.endsWith('/auth/refresh-token');
+    if (!isLogin && !isRefresh) {
+      const accessToken = getAccessToken();
+      if (accessToken) {
+        config.headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+    }
     
     return config;
   },
@@ -108,39 +119,40 @@ axiosInstance.interceptors.response.use(
       }
       
       // Try to refresh token if we haven't already retried
-      // Note: We can't check if refresh token exists (httpOnly cookie), so we just try
       if (!originalRequest._retry) {
         originalRequest._retry = true;
         isRefreshingToken = true;
         
         try {
-          // Attempt to refresh token - cookies are sent automatically
-          const response = await axiosInstance.post('/auth/refresh-token');
+          const refreshToken = getRefreshToken();
+          if (!refreshToken) throw new Error('No refresh token');
+          const res = await axios.post(
+            `${API_BASE_URL}${API_ENDPOINTS.REFRESH_TOKEN}`,
+            { refreshToken },
+            { headers: { 'Content-Type': 'application/json', 'X-Frontend-Type': 'admin' } }
+          );
+          const d = res.data;
+          if (d.accessToken != null || d.refreshToken != null) {
+            setTokens(d.accessToken ?? null, d.refreshToken ?? null);
+          }
           isRefreshingToken = false;
-          
-          // Retry original request
           return axiosInstance(originalRequest);
         } catch (refreshError) {
-          // Refresh failed or endpoint doesn't exist
           isRefreshingToken = false;
-          
-          // Only clear and redirect if not during session check
+          clearTokens();
           if (!isCheckingSession) {
             clearAuthCookies();
-            // Use window.location only if we're not in a protected route check
-            if (window.location.pathname !== '/') {
+            if (typeof window !== 'undefined' && window.location.pathname !== '/') {
               window.location.href = '/';
             }
           }
           return Promise.reject(refreshError);
         }
       } else {
-        // Already retried, clear auth and redirect
-        // Only clear and redirect if not during session check
         if (!isCheckingSession) {
+          clearTokens();
           clearAuthCookies();
-          // Use window.location only if we're not in a protected route check
-          if (window.location.pathname !== '/') {
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
             window.location.href = '/';
           }
         }
