@@ -11,15 +11,29 @@ const Layout = ({ children, email, fullName, role, onLogout, menuItems = [] }) =
     const navigate = useNavigate();
 
     // Subscription Logic
-    const { isSubscriptionActive, creditsData, loading: creditsLoading } = useSubscription();
+    const { isSubscriptionActive, creditsData, subscriptionData, loading: creditsLoading } = useSubscription();
 
     const getAlertContent = () => {
         if (creditsLoading) return null;
 
-        const remainingInterviewCredits = creditsData?.remainingInterviewCredits;
+        // Get credit data from API response (API returns isActive, not active)
+        const remainingInterviewCredits = creditsData?.remainingInterviewCredits ?? 0;
+        const remainingPositionCredits = creditsData?.remainingPositionCredits ?? 0;
         const validTillDate = creditsData?.validTill;
-        let daysRemainingUntilExpiry = null;
+        const isActive = creditsData?.isActive ?? creditsData?.active ?? false;
+        const expired = creditsData?.expired ?? false;
 
+        // Get subscription data from API response
+        const subscriptionStatus = subscriptionData?.subscriptionStatus;
+        const subscriptionValidUntil = subscriptionData?.validUntil;
+        const isSubscriptionActiveStatus = subscriptionData?.isSubscription ?? false;
+        
+        let daysRemainingUntilExpiry = null;
+        let expiryDateFormatted = null;
+        let subscriptionDaysRemaining = null;
+        let subscriptionExpiryFormatted = null;
+
+        // Check credits expiry date
         if (validTillDate) {
             const expiryDate = new Date(validTillDate);
             const today = new Date();
@@ -27,27 +41,118 @@ const Layout = ({ children, email, fullName, role, onLogout, menuItems = [] }) =
             today.setHours(0, 0, 0, 0);
             const timeDiff = expiryDate.getTime() - today.getTime();
             daysRemainingUntilExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            // Format expiry date for display
+            expiryDateFormatted = expiryDate.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+            });
         }
 
-        const isSubscriptionExpired = daysRemainingUntilExpiry !== null && daysRemainingUntilExpiry < 0;
-        const areCreditsExhausted = remainingInterviewCredits !== undefined && remainingInterviewCredits <= 0;
+        // Check subscription expiry date
+        if (subscriptionValidUntil) {
+            const subExpiryDate = new Date(subscriptionValidUntil);
+            const today = new Date();
+            subExpiryDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            const timeDiff = subExpiryDate.getTime() - today.getTime();
+            subscriptionDaysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            // Format subscription expiry date for display
+            subscriptionExpiryFormatted = subExpiryDate.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+            });
+        }
 
-        const showExpiredAlert = isSubscriptionExpired || areCreditsExhausted || !isSubscriptionActive;
-
+        // Check which credits are exhausted
+        const interviewCreditsExhausted = remainingInterviewCredits <= 0;
+        const positionCreditsExhausted = remainingPositionCredits <= 0;
+        const allCreditsExhausted = interviewCreditsExhausted && positionCreditsExhausted;
+        
+        // Check expiry status - check both credits and subscription expiry
+        const isCreditsExpired = expired || (daysRemainingUntilExpiry !== null && daysRemainingUntilExpiry < 0);
+        const isSubscriptionExpired = subscriptionStatus === 'EXPIRED' || 
+            (subscriptionStatus === 'INACTIVE') ||
+            (subscriptionDaysRemaining !== null && subscriptionDaysRemaining < 0);
+        const isSubscriptionExpiredOverall = isCreditsExpired || isSubscriptionExpired;
+        
+        // Determine alert type and message
+        const showExpiredAlert = isSubscriptionExpiredOverall || allCreditsExhausted || !isActive || 
+            (subscriptionStatus && subscriptionStatus !== 'ACTIVE' && !isSubscriptionActiveStatus);
         const showWarningAlert = !showExpiredAlert && (
-            (remainingInterviewCredits !== undefined && remainingInterviewCredits <= 40) ||
-            (daysRemainingUntilExpiry !== null && daysRemainingUntilExpiry <= 10)
+            (interviewCreditsExhausted || positionCreditsExhausted) ||
+            (remainingInterviewCredits <= 10 || remainingPositionCredits <= 10) ||
+            (daysRemainingUntilExpiry !== null && daysRemainingUntilExpiry <= 7) ||
+            (subscriptionDaysRemaining !== null && subscriptionDaysRemaining <= 7)
         );
+
+        // Build detailed message
+        let alertMessage = "";
+        let creditDetails = [];
+
+        if (showExpiredAlert) {
+            if (isSubscriptionExpired) {
+                if (subscriptionExpiryFormatted) {
+                    creditDetails.push(`Subscription expired on ${subscriptionExpiryFormatted}`);
+                } else {
+                    creditDetails.push("Subscription expired");
+                }
+            }
+            if (isCreditsExpired && expiryDateFormatted) {
+                creditDetails.push(`Credits expired on ${expiryDateFormatted}`);
+            }
+            if (interviewCreditsExhausted) {
+                creditDetails.push("Interview credits exhausted");
+            }
+            if (positionCreditsExhausted) {
+                creditDetails.push("Position credits exhausted");
+            }
+            if (!isActive) {
+                creditDetails.push("Credits are not active");
+            }
+            if (subscriptionStatus && subscriptionStatus !== 'ACTIVE' && !isSubscriptionActiveStatus) {
+                creditDetails.push(`Subscription status: ${subscriptionStatus}`);
+            }
+            
+            alertMessage = creditDetails.length > 0 
+                ? `⚠️ ${creditDetails.join(", ")}. Please click to renew! ⚠️`
+                : "⚠️ Your Subscription is not Active or Credits Exhausted. Please click to renew! ⚠️";
+        } else if (showWarningAlert) {
+            const warnings = [];
+            if (interviewCreditsExhausted) {
+                warnings.push("Interview credits exhausted");
+            } else if (remainingInterviewCredits <= 10) {
+                warnings.push(`Interview credits low (${remainingInterviewCredits} remaining)`);
+            }
+            if (positionCreditsExhausted) {
+                warnings.push("Position credits exhausted");
+            } else if (remainingPositionCredits <= 10) {
+                warnings.push(`Position credits low (${remainingPositionCredits} remaining)`);
+            }
+            if (daysRemainingUntilExpiry !== null && daysRemainingUntilExpiry <= 7) {
+                warnings.push(`Credits expiring in ${daysRemainingUntilExpiry} day${daysRemainingUntilExpiry !== 1 ? 's' : ''} (${expiryDateFormatted})`);
+            }
+            if (subscriptionDaysRemaining !== null && subscriptionDaysRemaining <= 7) {
+                warnings.push(`Subscription expiring in ${subscriptionDaysRemaining} day${subscriptionDaysRemaining !== 1 ? 's' : ''} (${subscriptionExpiryFormatted})`);
+            }
+            
+            alertMessage = warnings.length > 0 
+                ? `⚠️ ${warnings.join(", ")}. Click to upgrade! ⚠️`
+                : "⚠️ Your Subscription is expiring soon or credits are low. Click to upgrade! ⚠️";
+        }
 
         if (showExpiredAlert) {
             return (
                 <div
-                    className="bg-red-50 border-b border-red-200 py-2 overflow-hidden cursor-pointer"
+                    className="bg-red-50 border-b border-red-200 py-3 overflow-hidden cursor-pointer"
                     onClick={() => navigate('/dashboard/payment')}
                     role="alert"
                 >
-                    <div className="text-red-600 font-medium text-center animate-pulse">
-                        ⚠️ Your Subscription is not Active or Credits Exhausted. Please click to renew! ⚠️
+                    <div className="text-red-600 font-medium text-center animate-pulse px-4">
+                        {alertMessage}
                     </div>
                 </div>
             );
@@ -56,12 +161,12 @@ const Layout = ({ children, email, fullName, role, onLogout, menuItems = [] }) =
         if (showWarningAlert) {
             return (
                 <div
-                    className="bg-yellow-50 border-b border-yellow-200 py-2 overflow-hidden cursor-pointer"
+                    className="bg-yellow-50 border-b border-yellow-200 py-3 overflow-hidden cursor-pointer"
                     onClick={() => navigate('/dashboard/payment')}
                     role="alert"
                 >
-                    <div className="text-yellow-700 font-medium text-center">
-                        ⚠️ Your Subscription is expiring soon or credits are low. Click to upgrade! ⚠️
+                    <div className="text-yellow-700 font-medium text-center px-4">
+                        {alertMessage}
                     </div>
                 </div>
             );

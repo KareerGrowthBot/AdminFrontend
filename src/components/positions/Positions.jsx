@@ -81,8 +81,12 @@ const Positions = () => {
 
       const organizationId = localStorage.getItem('organizationId');
 
-      // Load positions - API now returns paginated response with content array
-      const response = await positionService.getAllPositions({ organizationId });
+      // Load all positions - pass large size to get all positions (same as candidates)
+      const response = await positionService.getAllPositions({ 
+        organizationId,
+        page: 0,
+        size: 1000 // Fetch all positions at once for client-side pagination
+      });
 
       // Handle paginated response (PageResponseDTO) or direct array
       let positionsData = [];

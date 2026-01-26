@@ -377,7 +377,6 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
       postedBy: 'All Users',
       postedById: '',
       createdBy: '',
-      createdBy: '',
       // paymentStatus: 'All',
     });
     setSearchQuery('');
@@ -390,7 +389,6 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
       filters.createdTo !== '' ||
       filters.status.length > 0 ||
       filters.postedBy !== 'All Users' ||
-      filters.orderBy !== 'createdAtDesc' ||
       filters.orderBy !== 'createdAtDesc' ||
       // filters.paymentStatus !== 'All' ||
       searchQuery !== ''
@@ -856,7 +854,6 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Mobile</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">College</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Degree / Stream</th>
-                <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Registered</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Status</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue">Last Login</th>
                 <th scope="col" className="px-6 py-2.5 text-center text-xs font-semibold text-white bg-qwikBlue rounded-r-lg">Action</th>
@@ -925,21 +922,6 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                         </span>
                       </td>
                       */}
-                      <td className="px-4 py-2 text-center border-y border-gray-100">
-                        {candidate.hasLoggedIn || candidate.isRegistered ? (
-                          <div className="flex justify-center">
-                            <div className="bg-green-100 p-1 rounded-full">
-                              <Check className="h-3 w-3 text-green-600 stroke-[3px]" />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex justify-center">
-                            <div className="bg-red-100 p-1 rounded-full">
-                              <X className="h-3 w-3 text-red-600 stroke-[3px]" />
-                            </div>
-                          </div>
-                        )}
-                      </td>
                       <td className="px-4 py-2 text-center border-y border-gray-100">
                         <span className={`${getStatusBadgeClasses(candidate.status)} px-3 py-1`}>
                           {(candidate.status || 'NOT INVITED').toUpperCase()}
@@ -1205,15 +1187,6 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                     </h3>
                     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
                       <div className="grid grid-cols-2 gap-x-8 gap-y-4">
-                        <DetailItem label="Registered" value={
-                          fullCandidateDetails.hasLoggedIn || fullCandidateDetails.isRegistered
-                            ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">
-                              <Check size={10} className="mr-1" /> Yes
-                            </span>
-                            : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-50 text-red-700">
-                              <X size={10} className="mr-1" /> No
-                            </span>
-                        } />
                         <DetailItem label="Last Login" value={
                           fullCandidateDetails.lastLogin
                             ? new Date(fullCandidateDetails.lastLogin).toLocaleString('en-GB', {

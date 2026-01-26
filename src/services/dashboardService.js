@@ -144,7 +144,12 @@ export const dashboardService = {
       const organizationId = localStorage.getItem('organizationId');
       if (!organizationId) throw new Error('Organization ID not found');
       const response = await apiClient.get(`/api/subscriptions/organization/${organizationId}/active`);
-      if (response.data && response.data.success) {
+      // Backend returns { subscription: {...}, hasActiveSubscription: true/false }
+      if (response.data && response.data.subscription) {
+        return response.data.subscription;
+      }
+      // Also check if success field exists (for backward compatibility)
+      if (response.data && response.data.success && response.data.subscription) {
         return response.data.subscription;
       }
       return null;

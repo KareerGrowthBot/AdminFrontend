@@ -7,6 +7,8 @@ import { instructionService } from "../../services/instructionService";
 import { positionService } from "../../services/positionService";
 import { aiService } from "../../services/aiService";
 import { authService } from "../../services/authService";
+import { candidateService } from "../../services/candidateService";
+import { assessmentSummaryService } from "../../services/assessmentSummaryService";
 import { AI_BACKEND_WS_URL } from "../../constants/api";
 import SnackbarAlert from "../common/SnackbarAlert";
 
@@ -791,6 +793,27 @@ Good luck with your assessment!`;
     const roundQuestions = questions[roundType];
     if (roundQuestions.length === 0) return 0;
 
+    // Special handling for coding questions - they use 'duration' field (in minutes)
+    if (roundType === 'coding') {
+      return roundQuestions.reduce((sum, q) => {
+        const duration = parseInt(q.duration) || 0; // in minutes
+        return sum + duration;
+      }, 0);
+    }
+
+    // Special handling for aptitude questions - they use 'noOfQuestions' * 'timePerQuestion'
+    // Note: When loaded from DB, fields are 'questionsCount' and 'answerTime'
+    // When newly added, fields are 'noOfQuestions' and 'timePerQuestion'
+    if (roundType === 'aptitude') {
+      return roundQuestions.reduce((sum, q) => {
+        const noOfQuestions = parseInt(q.noOfQuestions) || parseInt(q.questionsCount) || 0; // number of questions
+        const timePerQuestion = parseInt(q.timePerQuestion) || parseInt(q.answerTime) || 0; // time per question in minutes
+        const totalDuration = noOfQuestions * timePerQuestion;
+        return sum + totalDuration;
+      }, 0);
+    }
+
+    // For general and position questions - use prepareTime (seconds) + answerTime (minutes)
     const totalSeconds = roundQuestions.reduce((sum, q) => {
       const prepare = parseInt(q.prepareTime) || 0; // in seconds
       const answer = parseInt(q.answerTime) || 0; // in minutes, convert to seconds
@@ -805,6 +828,16 @@ Good luck with your assessment!`;
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')} `;
+  };
+
+  // Format duration in minutes to hh:mm:ss format
+  const formatRoundTime = (minutes) => {
+    if (!minutes || minutes === 0) return "00:00:00";
+    const totalSeconds = Math.round(minutes * 60);
+    const hours = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
   // Validation: Check if mandatory rounds have questions
@@ -869,9 +902,7 @@ Good luck with your assessment!`;
             id: String(q.id || q.text),
             question: q.text || "",
             answer: "",
-            questionType: "GENERAL",
-            timeToPrepare: parseInt(q.prepareTime) || 10,
-            timeToAnswer: parseInt(q.answerTime) || 2
+            questionType: "GENERAL"
           }))
         },
         positionSpecificQuestions: {
@@ -884,9 +915,7 @@ Good luck with your assessment!`;
             id: String(q.id || q.text),
             question: q.text || "",
             answer: "",
-            questionType: "POSITION_SPECIFIC",
-            timeToPrepare: parseInt(q.prepareTime) || 10,
-            timeToAnswer: parseInt(q.answerTime) || 2
+            questionType: "POSITION_SPECIFIC"
           }))
         },
         codingQuestions: (questions.coding || []).map(q => ({
@@ -899,11 +928,15 @@ Good luck with your assessment!`;
         })),
         aptitudeQuestions: (questions.aptitude || []).map(q => ({
           id: String(q.id || q.text),
-          questionSource: q.source || "NUMERICAL_REASONING",
+          questionSource: q.source || q.mcqType || "NUMERICAL_REASONING",
           difficultyLevel: q.difficulty || "EASY",
-          numberOfQuestions: String(q.questionsCount) || "5",
-          timeToAnswer: parseInt(q.answerTime) || 5
-        }))
+          numberOfQuestions: String(q.noOfQuestions || q.questionsCount) || "5"
+        })),
+        // Round timing fields (in hh:mm:ss format)
+        round1Time: formatRoundTime(calculateRoundDuration('general') || 0),
+        round2Time: formatRoundTime(calculateRoundDuration('position') || 0),
+        round3Time: formatRoundTime(calculateRoundDuration('coding') || 0),
+        round4Time: formatRoundTime(calculateRoundDuration('aptitude') || 0)
       };
 
       if (isEditMode && questionSetIdFromState) {
@@ -911,9 +944,11 @@ Good luck with your assessment!`;
         const updatedQuestionSet = await questionSetService.updateQuestionSet(questionSetIdFromState, questionSetData);
 
         // Also save/update the QuestionSection details in MongoDB
+        let savedQuestionSection = null;
         try {
-          await questionSectionService.createQuestionSection(questionSetIdFromState, questionSectionData);
+          const sectionResponse = await questionSectionService.createQuestionSection(questionSetIdFromState, questionSectionData);
           console.log("Question section details saved to MongoDB");
+          savedQuestionSection = sectionResponse?.data || sectionResponse;
         } catch (sectionError) {
           console.error("Error saving question section details:", sectionError);
           // Don't fail the whole operation if just the details fail, but log it
@@ -933,6 +968,172 @@ Good luck with your assessment!`;
           console.error("Error saving instruction details:", instError);
         }
 
+        // Create/Update assessment summaries for candidates assigned to this position
+        // This API is called when updating a question set, following the same pattern as AddCandidate.jsx
+        console.log("🔄 Starting assessment summary update process...");
+        try {
+          const generalCount = questionSetData.generalQuestionsCount || 0;
+          const positionSpecificCount = questionSetData.positionSpecificQuestionsCount || 0;
+          const codingCount = questionSetData.codingQuestionsCount || 0;
+          const aptitudeCount = questionSetData.aptitudeQuestionsCount || 0;
+          const totalDuration = questionSetData.totalDuration || 0;
+
+          // Determine round assignments (matching backend AssessmentSummaryClient pattern)
+          // round1=general, round2=position, round3=coding, round4=aptitude
+          const round1Assigned = generalCount > 0;
+          const round2Assigned = positionSpecificCount > 0;
+          const round3Assigned = codingCount > 0;     // round3 = coding (matching backend)
+          const round4Assigned = aptitudeCount > 0;   // round4 = aptitude (matching backend)
+          const totalRoundsAssigned = [round1Assigned, round2Assigned, round3Assigned, round4Assigned].filter(Boolean).length;
+
+          // Fetch candidates assigned to this position
+          const positionId = positionIdFromState || formData.positionId;
+          console.log(`🔍 Fetching candidates for position: ${positionId} (update mode)`);
+          
+          // Try to get candidates with test assignments first (more reliable)
+          let positionCandidates = [];
+          try {
+            const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
+            const candidatesWithAssignments = await candidateService.getCandidatesWithTestAssignments(organizationId);
+            
+            const candidates = Array.isArray(candidatesWithAssignments) 
+              ? candidatesWithAssignments 
+              : candidatesWithAssignments?.content || candidatesWithAssignments?.data || [];
+            
+            console.log(`📋 Total candidates fetched: ${candidates.length}`);
+            if (candidates.length > 0) {
+              console.log("📋 Sample candidate structure:", JSON.stringify(candidates[0], null, 2));
+            }
+            
+            // Filter candidates for this position - check multiple possible fields
+            positionCandidates = candidates.filter(c => {
+              const candidatePositionId = c.positionId || 
+                                         c.candidatePosition?.positionId || 
+                                         c.testAssignment?.positionId ||
+                                         c.testAssignments?.[0]?.positionId ||
+                                         c.candidatePositionId ||
+                                         (c.testAssignments && Array.isArray(c.testAssignments) && c.testAssignments.find(ta => ta.positionId === positionId)?.positionId);
+              
+              const matches = candidatePositionId === positionId;
+              if (!matches && candidatePositionId) {
+                console.log(`🔍 Candidate ${c.id || c.candidateId} has positionId: ${candidatePositionId}, looking for: ${positionId}`);
+              }
+              return matches;
+            });
+            
+            console.log(`👥 Found ${positionCandidates.length} candidates for position ${positionId} (from test assignments)`);
+            if (positionCandidates.length > 0) {
+              console.log("👥 Matched candidates:", positionCandidates.map(c => ({
+                id: c.id || c.candidateId,
+                name: c.fullName || c.candidateName || c.name,
+                positionId: c.positionId || c.candidatePosition?.positionId || c.testAssignment?.positionId
+              })));
+            }
+          } catch (assignmentsError) {
+            console.warn("⚠️ Failed to get candidates with test assignments, trying getAllCandidates:", assignmentsError);
+            
+            // Fallback to getAllCandidates
+            try {
+              const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
+              const candidatesResponse = await candidateService.getAllCandidates({
+                organizationId,
+                page: 0,
+                size: 1000,
+              });
+
+              const candidates = candidatesResponse?.content || candidatesResponse?.data || candidatesResponse || [];
+              positionCandidates = candidates.filter(c => {
+                const candidatePositionId = c.positionId || 
+                                           c.candidatePosition?.positionId || 
+                                           c.testAssignment?.positionId ||
+                                           c.testAssignments?.[0]?.positionId;
+                return candidatePositionId === positionId;
+              });
+
+              console.log(`👥 Found ${positionCandidates.length} candidates for position ${positionId} (from getAllCandidates)`);
+            } catch (fallbackError) {
+              console.error("❌ Failed to fetch candidates:", fallbackError);
+              positionCandidates = [];
+            }
+          }
+
+          if (positionCandidates.length > 0) {
+            console.log(`✅ Updating assessment summaries for ${positionCandidates.length} candidates`);
+            
+            for (const candidate of positionCandidates) {
+              try {
+                const candidateId = candidate.id || candidate.candidateId;
+                if (!candidateId) continue;
+
+                // Use round times from questionSectionData (already in hh:mm:ss format)
+                const round1Time = questionSectionData.round1Time || formatRoundTime(calculateRoundDuration('general') || 0);
+                const round2Time = questionSectionData.round2Time || formatRoundTime(calculateRoundDuration('position') || 0);
+                const round3Time = questionSectionData.round3Time || formatRoundTime(calculateRoundDuration('coding') || 0);
+                const round4Time = questionSectionData.round4Time || formatRoundTime(calculateRoundDuration('aptitude') || 0);
+
+                const assessmentStatePayload = {
+                  positionId: positionId,
+                  candidateId: candidateId,
+                  questionId: questionSetIdFromState,  // This is the questionSetId
+                  totalRoundsAssigned: totalRoundsAssigned,
+                  totalRoundsCompleted: 0,
+                  totalInterviewTime: String(totalDuration),  // Total duration in minutes (as string)
+                  
+                  // Round 1 - General Questions
+                  round1Assigned: round1Assigned,
+                  round1Completed: false,
+                  round1Time: round1Time,  // Allocated time from question section (hh:mm:ss)
+                  round1TimeTaken: null,
+                  round1StartTime: null,
+                  round1EndTime: null,
+                  
+                  // Round 2 - Position Specific Questions
+                  round2Assigned: round2Assigned,
+                  round2Completed: false,
+                  round2Time: round2Time,  // Allocated time from question section (hh:mm:ss)
+                  round2TimeTaken: null,
+                  round2StartTime: null,
+                  round2EndTime: null,
+                  
+                  // Round 3 - Coding Questions
+                  round3Assigned: round3Assigned,
+                  round3Completed: false,
+                  round3Time: round3Time,  // Allocated time from question section (hh:mm:ss)
+                  round3TimeTaken: null,
+                  round3StartTime: null,
+                  round3EndTime: null,
+                  
+                  // Round 4 - Aptitude Questions
+                  round4Assigned: round4Assigned,
+                  round4Completed: false,
+                  round4Time: round4Time,  // Allocated time from question section (hh:mm:ss)
+                  round4TimeTaken: null,
+                  round4StartTime: null,
+                  round4EndTime: null,
+                  
+                  isAssessmentCompleted: false,
+                  isReportGenerated: false,
+                  
+                  // Optional time fields (can be null initially)
+                  totalCompletionTime: null,
+                  assessmentStartTime: null,
+                  assessmentEndTime: null
+                };
+
+                await assessmentSummaryService.createAssessmentSummary(assessmentStatePayload);
+                console.log(`✅ Assessment summary updated for candidate ${candidateId}`);
+              } catch (candidateError) {
+                console.error(`❌ Failed to update assessment summary for candidate ${candidate.id || candidate.candidateId}:`, candidateError);
+              }
+            }
+          } else {
+            console.log("ℹ️ No candidates assigned to this position yet.");
+          }
+        } catch (assessmentSummaryError) {
+          console.error("❌ Error updating assessment summaries:", assessmentSummaryError);
+          // Don't block the flow
+        }
+
         showMessage("Question set updated successfully!", "success");
         setTimeout(() => {
           navigate("/dashboard/question-sets");
@@ -943,9 +1144,11 @@ Good luck with your assessment!`;
         const questionSetId = createdQuestionSet.id;
 
         // Also save the QuestionSection details in MongoDB
+        let savedQuestionSection = null;
         try {
-          await questionSectionService.createQuestionSection(questionSetId, questionSectionData);
+          const sectionResponse = await questionSectionService.createQuestionSection(questionSetId, questionSectionData);
           console.log("Question section details saved to MongoDB");
+          savedQuestionSection = sectionResponse?.data || sectionResponse;
         } catch (sectionError) {
           console.error("Error saving question section details:", sectionError);
         }
@@ -962,6 +1165,216 @@ Good luck with your assessment!`;
           console.log("Instruction details saved to MongoDB");
         } catch (instError) {
           console.error("Error saving instruction details:", instError);
+        }
+
+        // Create/Update assessment summaries for candidates assigned to this position
+        // This API is called when creating a question set, following the same pattern as AddCandidate.jsx
+        console.log("🔄 Starting assessment summary creation process...");
+        console.log("🔄 Question Set ID:", questionSetId);
+        console.log("🔄 Position ID:", positionIdFromState || formData.positionId);
+        console.log("🔄 CANDIDATE_BACKEND_URL:", import.meta.env.VITE_CANDIDATE_BACKEND_URL);
+        try {
+          const generalCount = questionSetData.generalQuestionsCount || 0;
+          const positionSpecificCount = questionSetData.positionSpecificQuestionsCount || 0;
+          const codingCount = questionSetData.codingQuestionsCount || 0;
+          const aptitudeCount = questionSetData.aptitudeQuestionsCount || 0;
+          const totalDuration = questionSetData.totalDuration || 0;
+
+          console.log("📊 Question counts:", {
+            general: generalCount,
+            positionSpecific: positionSpecificCount,
+            coding: codingCount,
+            aptitude: aptitudeCount,
+            totalDuration: totalDuration
+          });
+
+          // Determine round assignments (matching backend AssessmentSummaryClient pattern)
+          // round1=general, round2=position, round3=coding, round4=aptitude
+          const round1Assigned = generalCount > 0;
+          const round2Assigned = positionSpecificCount > 0;
+          const round3Assigned = codingCount > 0;     // round3 = coding (matching backend)
+          const round4Assigned = aptitudeCount > 0;   // round4 = aptitude (matching backend)
+          const totalRoundsAssigned = [round1Assigned, round2Assigned, round3Assigned, round4Assigned].filter(Boolean).length;
+
+          console.log("🎯 Round assignments:", {
+            round1Assigned,
+            round2Assigned,
+            round3Assigned,
+            round4Assigned,
+            totalRoundsAssigned
+          });
+
+          // Fetch candidates assigned to this position
+          const positionId = positionIdFromState || formData.positionId;
+          console.log(`🔍 Fetching candidates for position: ${positionId}`);
+          
+          // Try to get candidates with test assignments first (more reliable)
+          let positionCandidates = [];
+          try {
+            const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
+            const candidatesWithAssignments = await candidateService.getCandidatesWithTestAssignments(organizationId);
+            console.log("📋 Candidates with test assignments:", candidatesWithAssignments);
+            
+            const candidates = Array.isArray(candidatesWithAssignments) 
+              ? candidatesWithAssignments 
+              : candidatesWithAssignments?.content || candidatesWithAssignments?.data || [];
+            
+            console.log(`📋 Total candidates fetched: ${candidates.length}`);
+            if (candidates.length > 0) {
+              console.log("📋 Sample candidate structure:", JSON.stringify(candidates[0], null, 2));
+            }
+            
+            // Filter candidates for this position - check multiple possible fields
+            positionCandidates = candidates.filter(c => {
+              const candidatePositionId = c.positionId || 
+                                         c.candidatePosition?.positionId || 
+                                         c.testAssignment?.positionId ||
+                                         c.testAssignments?.[0]?.positionId ||
+                                         c.candidatePositionId ||
+                                         (c.testAssignments && Array.isArray(c.testAssignments) && c.testAssignments.find(ta => ta.positionId === positionId)?.positionId);
+              
+              const matches = candidatePositionId === positionId;
+              if (!matches && candidatePositionId) {
+                console.log(`🔍 Candidate ${c.id || c.candidateId} has positionId: ${candidatePositionId}, looking for: ${positionId}`);
+              }
+              return matches;
+            });
+            
+            console.log(`👥 Found ${positionCandidates.length} candidates for position ${positionId} (from test assignments)`);
+            if (positionCandidates.length > 0) {
+              console.log("👥 Matched candidates:", positionCandidates.map(c => ({
+                id: c.id || c.candidateId,
+                name: c.fullName || c.candidateName || c.name,
+                positionId: c.positionId || c.candidatePosition?.positionId || c.testAssignment?.positionId
+              })));
+            }
+          } catch (assignmentsError) {
+            console.warn("⚠️ Failed to get candidates with test assignments, trying getAllCandidates:", assignmentsError);
+            
+            // Fallback to getAllCandidates
+            try {
+              const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
+              const candidatesResponse = await candidateService.getAllCandidates({
+                organizationId,
+                page: 0,
+                size: 1000,
+              });
+
+              console.log("📋 Candidates response (fallback):", candidatesResponse);
+
+              const candidates = candidatesResponse?.content || candidatesResponse?.data || candidatesResponse || [];
+              positionCandidates = candidates.filter(c => {
+                const candidatePositionId = c.positionId || 
+                                           c.candidatePosition?.positionId || 
+                                           c.testAssignment?.positionId ||
+                                           c.testAssignments?.[0]?.positionId;
+                return candidatePositionId === positionId;
+              });
+
+              console.log(`👥 Found ${positionCandidates.length} candidates for position ${positionId} (from getAllCandidates)`);
+            } catch (fallbackError) {
+              console.error("❌ Failed to fetch candidates:", fallbackError);
+              positionCandidates = [];
+            }
+          }
+
+          if (positionCandidates.length > 0) {
+            console.log(`✅ Creating/updating assessment summaries for ${positionCandidates.length} candidates`);
+            
+            // Create assessment summary for each candidate
+            for (const candidate of positionCandidates) {
+              try {
+                const candidateId = candidate.id || candidate.candidateId;
+                if (!candidateId) {
+                  console.warn("⚠️ Skipping candidate - no ID found:", candidate);
+                  continue;
+                }
+
+                // Use round times from questionSectionData (already in hh:mm:ss format)
+                const round1Time = questionSectionData.round1Time || formatRoundTime(calculateRoundDuration('general') || 0);
+                const round2Time = questionSectionData.round2Time || formatRoundTime(calculateRoundDuration('position') || 0);
+                const round3Time = questionSectionData.round3Time || formatRoundTime(calculateRoundDuration('coding') || 0);
+                const round4Time = questionSectionData.round4Time || formatRoundTime(calculateRoundDuration('aptitude') || 0);
+
+                const assessmentStatePayload = {
+                  positionId: positionId,
+                  candidateId: candidateId,
+                  questionId: questionSetId,  // This is the questionSetId
+                  totalRoundsAssigned: totalRoundsAssigned,
+                  totalRoundsCompleted: 0,
+                  totalInterviewTime: String(totalDuration),  // Total duration in minutes (as string)
+                  
+                  // Round 1 - General Questions
+                  round1Assigned: round1Assigned,
+                  round1Completed: false,
+                  round1Time: round1Time,  // Allocated time from question section (hh:mm:ss)
+                  round1TimeTaken: null,
+                  round1StartTime: null,
+                  round1EndTime: null,
+                  
+                  // Round 2 - Position Specific Questions
+                  round2Assigned: round2Assigned,
+                  round2Completed: false,
+                  round2Time: round2Time,  // Allocated time from question section (hh:mm:ss)
+                  round2TimeTaken: null,
+                  round2StartTime: null,
+                  round2EndTime: null,
+                  
+                  // Round 3 - Coding Questions
+                  round3Assigned: round3Assigned,
+                  round3Completed: false,
+                  round3Time: round3Time,  // Allocated time from question section (hh:mm:ss)
+                  round3TimeTaken: null,
+                  round3StartTime: null,
+                  round3EndTime: null,
+                  
+                  // Round 4 - Aptitude Questions
+                  round4Assigned: round4Assigned,
+                  round4Completed: false,
+                  round4Time: round4Time,  // Allocated time from question section (hh:mm:ss)
+                  round4TimeTaken: null,
+                  round4StartTime: null,
+                  round4EndTime: null,
+                  
+                  isAssessmentCompleted: false,
+                  isReportGenerated: false,
+                  
+                  // Optional time fields (can be null initially)
+                  totalCompletionTime: null,
+                  assessmentStartTime: null,
+                  assessmentEndTime: null
+                };
+
+                console.log(`📤 Calling assessment summary API for candidate ${candidateId}`);
+                console.log(`📤 API URL: http://localhost:8085/assessment-summaries`);
+                console.log(`📤 Payload:`, JSON.stringify(assessmentStatePayload, null, 2));
+                const result = await assessmentSummaryService.createAssessmentSummary(assessmentStatePayload);
+                console.log(`✅ Assessment summary created/updated for candidate ${candidateId}:`, result);
+                console.log(`✅ Full API Response:`, JSON.stringify(result, null, 2));
+              } catch (candidateError) {
+                console.error(`❌ Failed to create assessment summary for candidate ${candidate.id || candidate.candidateId}:`, candidateError);
+                // Continue with other candidates
+              }
+            }
+            console.log("✅ Assessment summary creation process completed");
+          } else {
+            console.log("ℹ️ No candidates assigned to this position yet. Assessment summaries will be created when candidates are assigned.");
+            console.log("ℹ️ This is expected when creating a new question set. Assessment summaries will be created when candidates are assigned to this position.");
+            console.log("ℹ️ Position ID:", positionId);
+            console.log("ℹ️ Question Set ID:", questionSetId);
+            console.log("ℹ️ To test the API call, please assign at least one candidate to this position first.");
+            console.log("ℹ️ API Endpoint: POST http://localhost:8085/assessment-summaries");
+            console.log("ℹ️ Total candidates in organization:", candidates.length);
+            console.log("ℹ️ All candidate positionIds:", candidates.map(c => ({
+              candidateId: c.id || c.candidateId,
+              positionId: c.positionId || c.candidatePosition?.positionId || c.testAssignment?.positionId || 'N/A'
+            })));
+          }
+        } catch (assessmentSummaryError) {
+          console.error("❌ Error in assessment summary creation process:", assessmentSummaryError);
+          console.error("❌ Error stack:", assessmentSummaryError.stack);
+          console.error("❌ Full error:", JSON.stringify(assessmentSummaryError, null, 2));
+          // Don't block the flow - assessment summaries can be created later when candidates are assigned
         }
 
         showMessage("Question set created successfully! Redirecting to add candidate for test page...", "success");
@@ -1750,10 +2163,13 @@ Good luck with your assessment!`;
                     if (aptitudeMcqType) {
                       const newQuestion = {
                         text: "",
+                        source: aptitudeMcqType, // Store as 'source' for API compatibility
                         mcqType: aptitudeMcqType,
                         difficulty: aptitudeDifficulty,
                         noOfQuestions: aptitudeNoOfQuestions,
-                        timePerQuestion: aptitudeTimePerQuestion
+                        questionsCount: aptitudeNoOfQuestions, // Also store as 'questionsCount' for calculation
+                        timePerQuestion: aptitudeTimePerQuestion,
+                        answerTime: aptitudeTimePerQuestion // Also store as 'answerTime' for calculation
                       };
                       setQuestions(prev => ({
                         ...prev,

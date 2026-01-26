@@ -12,6 +12,7 @@ if (!import.meta.env.VITE_AI_BACKEND_WS_URL) {
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export const AI_BACKEND_URL = import.meta.env.VITE_AI_BACKEND_URL;
 export const AI_BACKEND_WS_URL = import.meta.env.VITE_AI_BACKEND_WS_URL;
+export const CANDIDATE_BACKEND_URL = import.meta.env.VITE_CANDIDATE_BACKEND_URL || "http://localhost:8085";
 
 export const API_ENDPOINTS = {
   // Auth endpoints
@@ -35,6 +36,8 @@ export const API_ENDPOINTS = {
   SEARCH_CANDIDATE_BY_EMAIL: "/api/candidates/search",
   GET_CANDIDATE_BY_EMAIL: "/api/candidates",
   SEND_INVITE: "/api/candidates/send-invite",
+  PRIVATE_LINK: "/api/candidates/private-link",
+  SEND_MANUAL_TEST_INVITE: "/api/candidates/manual-assessment-invitations/send",
   SEND_WELCOME: "/api/candidates/send-welcome",
   RESEND_INVITE: "/api/candidates/resend-invite",
   GENERATE_PUBLIC_LINK: "/api/candidates/generate-public-link",

@@ -23,6 +23,23 @@ export const fileService = {
   },
 
   /**
+   * Upload Resume (same pattern as JD – stored locally under uploads/resumes/)
+   * @param {File} file - Resume file to upload
+   * @returns {Promise<{path: string, filePath: string, fileName: string, originalFileName: string}>}
+   */
+  uploadResume: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post("/api/files/upload/resumes", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
+  /**
    * Upload file (generic)
    * @param {File} file - File to upload
    * @param {string} subfolder - Subfolder (e.g., "resumes")

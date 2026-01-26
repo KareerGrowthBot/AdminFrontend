@@ -4,8 +4,10 @@ import { ArrowLeft, Save, Upload, FileText, Search, X, Filter } from "lucide-rea
 import { candidateService } from "../../services/candidateService";
 import { positionService } from "../../services/positionService";
 import { questionSetService } from "../../services/questionSetService";
+import { questionSectionService } from "../../services/questionSectionService";
 import { fileService } from "../../services/fileService";
 import { authService } from "../../services/authService";
+import { assessmentSummaryService } from "../../services/assessmentSummaryService";
 import SnackbarAlert from "../common/SnackbarAlert";
 
 const CreateCandidate = ({ adminInfo }) => {
@@ -612,41 +614,55 @@ const CreateCandidate = ({ adminInfo }) => {
     }
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
       const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
         showMessage("Please select a PDF or Word document (.docx)", "error");
         return;
       }
       setSelectedFile(file);
-      // Clear previous file path - will be set after upload on submit
-      setFormData(prev => ({
-        ...prev,
-        resumeFileName: file.name,
-        resumeFilePath: ""
-      }));
+      setUploading(true);
+      try {
+        const uploadResponse = await fileService.uploadResume(file);
+        const path = uploadResponse.path || uploadResponse.filePath;
+        const name = uploadResponse.originalFileName || uploadResponse.fileName || file.name;
+        setFormData(prev => ({
+          ...prev,
+          resumeFileName: name,
+          resumeFilePath: path
+        }));
+        showMessage("Resume uploaded successfully", "success");
+      } catch (err) {
+        console.error("Resume upload failed:", err);
+        showMessage(err?.response?.data?.error || "Failed to upload resume. Please try again.", "error");
+        setSelectedFile(null);
+        setFormData(prev => ({ ...prev, resumeFileName: "", resumeFilePath: "" }));
+      } finally {
+        setUploading(false);
+        e.target.value = "";
+      }
     } else {
-      // Clear file selection
       setSelectedFile(null);
-      setFormData(prev => ({
-        ...prev,
-        resumeFileName: "",
-        resumeFilePath: ""
-      }));
+      setFormData(prev => ({ ...prev, resumeFileName: "", resumeFilePath: "" }));
     }
   };
 
-  const handleRemoveFile = () => {
+  const handleRemoveFile = async () => {
+    const path = formData.resumeFilePath;
+    if (path && path.startsWith("resumes/")) {
+      try {
+        const parts = path.split("/");
+        const subfolder = parts[0];
+        const filename = parts.slice(1).join("/");
+        await fileService.deleteFile(subfolder, filename);
+      } catch (e) {
+        console.warn("Could not delete resume from server:", e);
+      }
+    }
     setSelectedFile(null);
-    setFormData(prev => ({
-      ...prev,
-      resumeFile: null,
-      resumeFileName: "",
-      resumeFilePath: ""
-    }));
+    setFormData(prev => ({ ...prev, resumeFileName: "", resumeFilePath: "" }));
   };
 
   const handleGeneratePublicLink = async () => {
@@ -797,27 +813,15 @@ const CreateCandidate = ({ adminInfo }) => {
     try {
       setLoading(true);
 
-      // Step 1: Upload the resume file first (same as JD document upload in CreatePosition)
-      let resumePath = formData.resumeFilePath;
-      let resumeFileName = formData.resumeFileName;
-
-      if (selectedFile) {
-        setUploading(true);
-        try {
-          const uploadResponse = await fileService.uploadFile(selectedFile, "resumes");
-          resumePath = uploadResponse.path || uploadResponse.filePath;
-          resumeFileName = uploadResponse.originalFileName || selectedFile.name || uploadResponse.fileName;
-        } catch (uploadError) {
-          console.error("Error uploading resume:", uploadError);
-          showMessage("Failed to upload resume. Please try again.", "error");
-          setUploading(false);
-          setLoading(false);
-          return;
-        }
-        setUploading(false);
+      // Resume already uploaded on file select (same as JD) and path stored in form state.
+      const resumePath = formData.resumeFilePath;
+      const resumeFileName = formData.resumeFileName;
+      if (!resumePath) {
+        showMessage("Please upload candidate resume", "error");
+        setLoading(false);
+        return;
       }
 
-      // Prepare candidate data
       const candidateData = {
         email: formData.candidateEmail,
         fullName: formData.candidateName,
@@ -827,8 +831,8 @@ const CreateCandidate = ({ adminInfo }) => {
         interviewScheduleType: formData.interviewScheduleType,
         linkExpiresInDays: parseInt(formData.linkExpiresInDays),
         linkType: formData.linkType,
-        resumePath: resumePath,
-        resumeFileName: resumeFileName,
+        resumePath,
+        resumeFileName,
         semester: formData.semester,
         registrationPaid: formData.registrationPaid
       };
@@ -837,41 +841,195 @@ const CreateCandidate = ({ adminInfo }) => {
         // TODO: Add update API when available
         showMessage("Update functionality coming soon", "info");
       } else {
-        // Create candidate with full details and position link (Status: PENDING)
-        const createResponse = await candidateService.createCandidate(candidateData);
+        // POST /api/candidates/create then POST /api/candidates/private-link (visible in browser Network).
+        const res = await candidateService.createCandidate(candidateData);
+        const c = res?.candidate;
+        const cp = res?.candidatePosition;
+        const candidateId = c?.id ?? cp?.candidateId;
+        const positionId = cp?.positionId ?? formData.positionId;
+        const questionSetId = cp?.questionSetId ?? formData.questionSetId;
 
-        // Show interim status
-        showMessage("Processing candidate...", "info");
-
-        // Status is handled by backend now
-        if (createResponse && createResponse.candidate) {
-          const recommendation = createResponse.candidate.recommendation;
-          const resumeScore = createResponse.candidatePosition ? createResponse.candidatePosition.resumeMatchScore : null;
-
-          if (recommendation === 'INVITED') {
-            showMessage(`Candidate added and invited successfully! (Resume Score: ${resumeScore})`, "success");
-          } else if (recommendation === 'RESUME_REJECTED' || recommendation === 'RESUME REJECTED') {
-            showMessage(`Candidate added, but resume was rejected. Score: ${resumeScore} (Threshold: 45)`, "warning");
-          } else {
-            showMessage("Candidate added successfully.", "success");
+        if (candidateId && positionId) {
+          try {
+            await candidateService.createOrGetPrivateLink({
+              candidateId,
+              positionId,
+              questionSetId: questionSetId || undefined
+            });
+          } catch (e) {
+            console.warn("Private link create/get failed (non-blocking):", e?.response?.data || e?.message);
           }
-        } else {
-          showMessage("Candidate added successfully.", "success");
+
+          // Create assessment summary after candidate is created and linked to position
+          // This API is called when a candidate is added to a test
+          // Note: candidateId remains the same for multiple positions, but each position gets its own assessment summary
+          if (questionSetId) {
+            try {
+              console.log("🔄 Starting assessment summary creation for candidate...");
+              console.log("🔄 Candidate ID:", candidateId, "(same candidateId for all positions)");
+              console.log("🔄 Position ID:", positionId, "(unique per position)");
+              console.log("🔄 Question Set ID:", questionSetId, "(unique per position)");
+
+              // Step 1: Fetch position details to get organizationId (if needed)
+              console.log("📥 Fetching position details...");
+              const positionDetails = await positionService.getPositionById(positionId);
+              console.log("✅ Position details:", positionDetails);
+
+              // Step 2: Fetch question set details to get question counts
+              console.log("📥 Fetching question set details...");
+              const questionSetDetails = await questionSetService.getQuestionSetById(questionSetId);
+              console.log("✅ Question set details:", questionSetDetails);
+
+              // Step 2.5: Fetch question section details to get round times
+              console.log("📥 Fetching question section details...");
+              let questionSectionData = null;
+              let round1Time = null;
+              let round2Time = null;
+              let round3Time = null;
+              let round4Time = null;
+              
+              try {
+                const questionSectionResponse = await questionSectionService.getQuestionSectionByQuestionSet(questionSetId);
+                console.log("✅ Question section response:", questionSectionResponse);
+                
+                if (questionSectionResponse?.status === "success" && questionSectionResponse?.data) {
+                  questionSectionData = questionSectionResponse.data;
+                  round1Time = questionSectionData.round1Time || null;
+                  round2Time = questionSectionData.round2Time || null;
+                  round3Time = questionSectionData.round3Time || null;
+                  round4Time = questionSectionData.round4Time || null;
+                  
+                  console.log("✅ Round times from question section:", {
+                    round1Time,
+                    round2Time,
+                    round3Time,
+                    round4Time
+                  });
+                } else {
+                  console.warn("⚠️ Question section data not found or invalid format");
+                }
+              } catch (sectionError) {
+                console.warn("⚠️ Failed to fetch question section, will use null for round times:", sectionError);
+              }
+
+              // Extract question counts from question set
+              const generalCount = questionSetDetails?.generalQuestionsCount || 0;
+              const positionSpecificCount = questionSetDetails?.positionSpecificQuestionsCount || 0;
+              const codingCount = questionSetDetails?.codingQuestionsCount || 0;
+              const aptitudeCount = questionSetDetails?.aptitudeQuestionsCount || 0;
+              const totalDuration = questionSetDetails?.totalDuration || 0;
+
+              console.log("📊 Question counts:", {
+                general: generalCount,
+                positionSpecific: positionSpecificCount,
+                coding: codingCount,
+                aptitude: aptitudeCount,
+                totalDuration: totalDuration
+              });
+
+              // Determine round assignments (matching backend pattern)
+              // round1=general, round2=position, round3=coding, round4=aptitude
+              const round1Assigned = generalCount > 0;
+              const round2Assigned = positionSpecificCount > 0;
+              const round3Assigned = codingCount > 0;     // round3 = coding
+              const round4Assigned = aptitudeCount > 0;   // round4 = aptitude
+              const totalRoundsAssigned = [round1Assigned, round2Assigned, round3Assigned, round4Assigned].filter(Boolean).length;
+
+              console.log("🎯 Round assignments:", {
+                round1Assigned,
+                round2Assigned,
+                round3Assigned,
+                round4Assigned,
+                totalRoundsAssigned
+              });
+
+              // Step 3: Create assessment summary
+              // Note: candidateId is the same for all positions, but positionId and questionSetId are unique per position
+              // This allows one candidate to have multiple assessment summaries (one per position)
+              const assessmentStatePayload = {
+                positionId: positionId,  // Unique per position
+                candidateId: candidateId,  // Same candidateId for all positions
+                questionId: questionSetId,  // Unique per position (this is the questionSetId)
+                totalRoundsAssigned: totalRoundsAssigned,
+                totalRoundsCompleted: 0,
+                totalInterviewTime: String(totalDuration),  // Total duration in minutes (as string)
+                
+                // Round 1 - General Questions
+                round1Assigned: round1Assigned,
+                round1Completed: false,
+                round1Time: round1Time,  // Round time from question section (hh:mm:ss format)
+                round1TimeTaken: null,
+                round1StartTime: null,
+                round1EndTime: null,
+                
+                // Round 2 - Position Specific Questions
+                round2Assigned: round2Assigned,
+                round2Completed: false,
+                round2Time: round2Time,  // Round time from question section (hh:mm:ss format)
+                round2TimeTaken: null,
+                round2StartTime: null,
+                round2EndTime: null,
+                
+                // Round 3 - Coding Questions
+                round3Assigned: round3Assigned,
+                round3Completed: false,
+                round3Time: round3Time,  // Round time from question section (hh:mm:ss format)
+                round3TimeTaken: null,
+                round3StartTime: null,
+                round3EndTime: null,
+                
+                // Round 4 - Aptitude Questions
+                round4Assigned: round4Assigned,
+                round4Completed: false,
+                round4Time: round4Time,  // Round time from question section (hh:mm:ss format)
+                round4TimeTaken: null,
+                round4StartTime: null,
+                round4EndTime: null,
+                
+                isAssessmentCompleted: false,
+                isReportGenerated: false,
+                
+                // Optional time fields (can be null initially)
+                totalCompletionTime: null,
+                assessmentStartTime: null,
+                assessmentEndTime: null
+              };
+
+              console.log("📤 Calling assessment summary API...");
+              console.log("📤 API URL: http://localhost:8085/assessment-summaries");
+              console.log("📤 Payload:", JSON.stringify(assessmentStatePayload, null, 2));
+              
+              const assessmentResult = await assessmentSummaryService.createAssessmentSummary(assessmentStatePayload);
+              console.log("✅ Assessment summary created/updated:", assessmentResult);
+              console.log("✅ Full API Response:", JSON.stringify(assessmentResult, null, 2));
+            } catch (assessmentError) {
+              console.error("❌ Failed to create assessment summary:", assessmentError);
+              console.error("❌ Error response:", assessmentError.response?.data);
+              console.error("❌ Error status:", assessmentError.response?.status);
+              // Don't block the flow - assessment summary creation failure shouldn't block candidate creation
+            }
+          } else {
+            console.warn("⚠️ Question Set ID not available, skipping assessment summary creation");
+          }
         }
 
-        // Redirect to candidates list after 1 second
+        showMessage(
+          "Candidate added to test. Resume evaluation in progress. We'll notify the candidate if eligible.",
+          "success"
+        );
+
         setTimeout(() => {
           navigate("/dashboard/test-assignments", {
-            state: {
-              activeTab: "test",
-              forceReload: true
-            }
+            state: { activeTab: "test", forceReload: true }
           });
-        }, 1500); // Slight increase to allow reading message
+        }, 1500);
       }
     } catch (error) {
       console.error("Error creating candidate:", error);
-      const errorMessage = error?.response?.data?.error || error?.message || "Failed to add candidate. Please try again.";
+      let errorMessage = error?.response?.data?.error || error?.message || "Failed to add candidate. Please try again.";
+      if (typeof errorMessage === "string" && errorMessage.toLowerCase().includes("interview credits")) {
+        errorMessage = "No interview credits left. Add credits to continue.";
+      }
       showMessage(errorMessage, "error");
     } finally {
       setLoading(false);
@@ -1172,14 +1330,15 @@ const CreateCandidate = ({ adminInfo }) => {
                         Candidate Resume (PDF, Word .docx) {formData.resumeFilePath ? "" : <span className="text-red-500">*</span>}
                       </label>
                       <div className="flex items-center gap-2">
-                        <label className="px-3 py-1.5 text-xs border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition">
+                        <label className={`px-3 py-1.5 text-xs border border-gray-300 rounded-lg cursor-pointer transition ${uploading ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
                           <input
                             type="file"
                             accept=".pdf,.doc,.docx"
                             onChange={handleFileSelect}
+                            disabled={uploading}
                             className="hidden"
                           />
-                          {formData.resumeFilePath ? "Change file" : "Choose file"}
+                          {uploading ? "Uploading…" : (formData.resumeFilePath ? "Change file" : "Choose file")}
                         </label>
                         <span className="text-xs text-gray-500">
                           {selectedFile ? selectedFile.name : formData.resumeFileName || "No file chosen"}

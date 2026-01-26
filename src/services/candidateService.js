@@ -125,8 +125,10 @@ export const candidateService = {
   },
 
   /**
-   * Create candidate with full details and position link
-   * @param {object} candidateData - Candidate data including email, name, phone, resume, position, question set, etc.
+   * Create candidate and add to test (only API for add-to-test).
+   * Backend: create + candidate_positions (PENDING) → async resume score → invite email if INVITED →
+   * private_link only when invite sent (never for PENDING/RESUME_REJECTED).
+   * @param {object} candidateData - { email, fullName, phone, positionId, questionSetId, resumePath, resumeFileName, ... }
    * @returns {Promise<{message: string, candidate: object, candidatePosition: object}>}
    */
   createCandidate: async (candidateData) => {
@@ -181,13 +183,38 @@ export const candidateService = {
   },
 
   /**
-   * Send invitation email to candidate (updates status to INVITED)
+   * Create or get private link for candidate+position. Visible in browser Network tab.
+   * @param {object} payload - { candidateId, positionId, questionSetId? }
+   * @returns {Promise<{success: boolean, verificationCode?: string, link?: string, existed?: boolean}>}
+   */
+  createOrGetPrivateLink: async (payload) => {
+    const response = await apiClient.post(API_ENDPOINTS.PRIVATE_LINK, payload);
+    return response.data;
+  },
+
+  /**
+   * Send test invitation email to candidate (same as reference manual-assessment-invitations send).
+   * Updates status to INVITED, sets link_expires_at. Uses private link + DB ZeptoMail.
    * @param {string} candidateId - Candidate UUID
    * @param {string} positionId - Position ID
+   * @param {string} [companyName] - Optional; when provided, used in email; else org name
    * @returns {Promise<{message: string}>}
    */
-  sendInvite: async (candidateId, positionId) => {
-    const response = await apiClient.post(API_ENDPOINTS.SEND_INVITE, { candidateId, positionId });
+  sendInvite: async (candidateId, positionId, companyName = null) => {
+    const body = { candidateId, positionId };
+    if (companyName != null && String(companyName).trim()) body.companyName = String(companyName).trim();
+    const response = await apiClient.post(API_ENDPOINTS.SEND_INVITE, body);
+    return response.data;
+  },
+
+  /**
+   * Manual send test invitation (same as reference POST /manual-assessment-invitations/send).
+   * Query params: positionId, candidateId, companyName (optional).
+   */
+  sendManualTestInvite: async (positionId, candidateId, companyName = null) => {
+    const params = new URLSearchParams({ positionId, candidateId });
+    if (companyName != null && String(companyName).trim()) params.set("companyName", String(companyName).trim());
+    const response = await apiClient.post(`${API_ENDPOINTS.SEND_MANUAL_TEST_INVITE}?${params}`);
     return response.data;
   },
 
