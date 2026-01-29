@@ -855,6 +855,16 @@ Good luck with your assessment!`;
       return;
     }
 
+    if (!formData.interviewMode) {
+      showMessage("Please select an Interview Type", "error");
+      return;
+    }
+
+    if (!formData.interviewPlatform) {
+      showMessage("Please select an Interview Platform", "error");
+      return;
+    }
+
     // Validate mandatory rounds (only for create mode)
     if (!isEditMode && !isValidQuestionSet()) {
       showMessage("General Questions (Round 1) and Position Specific (Round 2) are mandatory. Please add at least one question to each.", "error");
@@ -989,38 +999,38 @@ Good luck with your assessment!`;
           // Fetch candidates assigned to this position
           const positionId = positionIdFromState || formData.positionId;
           console.log(`🔍 Fetching candidates for position: ${positionId} (update mode)`);
-          
+
           // Try to get candidates with test assignments first (more reliable)
           let positionCandidates = [];
           try {
             const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
             const candidatesWithAssignments = await candidateService.getCandidatesWithTestAssignments(organizationId);
-            
-            const candidates = Array.isArray(candidatesWithAssignments) 
-              ? candidatesWithAssignments 
+
+            const candidates = Array.isArray(candidatesWithAssignments)
+              ? candidatesWithAssignments
               : candidatesWithAssignments?.content || candidatesWithAssignments?.data || [];
-            
+
             console.log(`📋 Total candidates fetched: ${candidates.length}`);
             if (candidates.length > 0) {
               console.log("📋 Sample candidate structure:", JSON.stringify(candidates[0], null, 2));
             }
-            
+
             // Filter candidates for this position - check multiple possible fields
             positionCandidates = candidates.filter(c => {
-              const candidatePositionId = c.positionId || 
-                                         c.candidatePosition?.positionId || 
-                                         c.testAssignment?.positionId ||
-                                         c.testAssignments?.[0]?.positionId ||
-                                         c.candidatePositionId ||
-                                         (c.testAssignments && Array.isArray(c.testAssignments) && c.testAssignments.find(ta => ta.positionId === positionId)?.positionId);
-              
+              const candidatePositionId = c.positionId ||
+                c.candidatePosition?.positionId ||
+                c.testAssignment?.positionId ||
+                c.testAssignments?.[0]?.positionId ||
+                c.candidatePositionId ||
+                (c.testAssignments && Array.isArray(c.testAssignments) && c.testAssignments.find(ta => ta.positionId === positionId)?.positionId);
+
               const matches = candidatePositionId === positionId;
               if (!matches && candidatePositionId) {
                 console.log(`🔍 Candidate ${c.id || c.candidateId} has positionId: ${candidatePositionId}, looking for: ${positionId}`);
               }
               return matches;
             });
-            
+
             console.log(`👥 Found ${positionCandidates.length} candidates for position ${positionId} (from test assignments)`);
             if (positionCandidates.length > 0) {
               console.log("👥 Matched candidates:", positionCandidates.map(c => ({
@@ -1031,7 +1041,7 @@ Good luck with your assessment!`;
             }
           } catch (assignmentsError) {
             console.warn("⚠️ Failed to get candidates with test assignments, trying getAllCandidates:", assignmentsError);
-            
+
             // Fallback to getAllCandidates
             try {
               const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
@@ -1043,10 +1053,10 @@ Good luck with your assessment!`;
 
               const candidates = candidatesResponse?.content || candidatesResponse?.data || candidatesResponse || [];
               positionCandidates = candidates.filter(c => {
-                const candidatePositionId = c.positionId || 
-                                           c.candidatePosition?.positionId || 
-                                           c.testAssignment?.positionId ||
-                                           c.testAssignments?.[0]?.positionId;
+                const candidatePositionId = c.positionId ||
+                  c.candidatePosition?.positionId ||
+                  c.testAssignment?.positionId ||
+                  c.testAssignments?.[0]?.positionId;
                 return candidatePositionId === positionId;
               });
 
@@ -1059,7 +1069,7 @@ Good luck with your assessment!`;
 
           if (positionCandidates.length > 0) {
             console.log(`✅ Updating assessment summaries for ${positionCandidates.length} candidates`);
-            
+
             for (const candidate of positionCandidates) {
               try {
                 const candidateId = candidate.id || candidate.candidateId;
@@ -1078,7 +1088,7 @@ Good luck with your assessment!`;
                   totalRoundsAssigned: totalRoundsAssigned,
                   totalRoundsCompleted: 0,
                   totalInterviewTime: String(totalDuration),  // Total duration in minutes (as string)
-                  
+
                   // Round 1 - General Questions
                   round1Assigned: round1Assigned,
                   round1Completed: false,
@@ -1086,7 +1096,7 @@ Good luck with your assessment!`;
                   round1TimeTaken: null,
                   round1StartTime: null,
                   round1EndTime: null,
-                  
+
                   // Round 2 - Position Specific Questions
                   round2Assigned: round2Assigned,
                   round2Completed: false,
@@ -1094,7 +1104,7 @@ Good luck with your assessment!`;
                   round2TimeTaken: null,
                   round2StartTime: null,
                   round2EndTime: null,
-                  
+
                   // Round 3 - Coding Questions
                   round3Assigned: round3Assigned,
                   round3Completed: false,
@@ -1102,7 +1112,7 @@ Good luck with your assessment!`;
                   round3TimeTaken: null,
                   round3StartTime: null,
                   round3EndTime: null,
-                  
+
                   // Round 4 - Aptitude Questions
                   round4Assigned: round4Assigned,
                   round4Completed: false,
@@ -1110,10 +1120,10 @@ Good luck with your assessment!`;
                   round4TimeTaken: null,
                   round4StartTime: null,
                   round4EndTime: null,
-                  
+
                   isAssessmentCompleted: false,
                   isReportGenerated: false,
-                  
+
                   // Optional time fields (can be null initially)
                   totalCompletionTime: null,
                   assessmentStartTime: null,
@@ -1207,39 +1217,39 @@ Good luck with your assessment!`;
           // Fetch candidates assigned to this position
           const positionId = positionIdFromState || formData.positionId;
           console.log(`🔍 Fetching candidates for position: ${positionId}`);
-          
+
           // Try to get candidates with test assignments first (more reliable)
           let positionCandidates = [];
           try {
             const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
             const candidatesWithAssignments = await candidateService.getCandidatesWithTestAssignments(organizationId);
             console.log("📋 Candidates with test assignments:", candidatesWithAssignments);
-            
-            const candidates = Array.isArray(candidatesWithAssignments) 
-              ? candidatesWithAssignments 
+
+            const candidates = Array.isArray(candidatesWithAssignments)
+              ? candidatesWithAssignments
               : candidatesWithAssignments?.content || candidatesWithAssignments?.data || [];
-            
+
             console.log(`📋 Total candidates fetched: ${candidates.length}`);
             if (candidates.length > 0) {
               console.log("📋 Sample candidate structure:", JSON.stringify(candidates[0], null, 2));
             }
-            
+
             // Filter candidates for this position - check multiple possible fields
             positionCandidates = candidates.filter(c => {
-              const candidatePositionId = c.positionId || 
-                                         c.candidatePosition?.positionId || 
-                                         c.testAssignment?.positionId ||
-                                         c.testAssignments?.[0]?.positionId ||
-                                         c.candidatePositionId ||
-                                         (c.testAssignments && Array.isArray(c.testAssignments) && c.testAssignments.find(ta => ta.positionId === positionId)?.positionId);
-              
+              const candidatePositionId = c.positionId ||
+                c.candidatePosition?.positionId ||
+                c.testAssignment?.positionId ||
+                c.testAssignments?.[0]?.positionId ||
+                c.candidatePositionId ||
+                (c.testAssignments && Array.isArray(c.testAssignments) && c.testAssignments.find(ta => ta.positionId === positionId)?.positionId);
+
               const matches = candidatePositionId === positionId;
               if (!matches && candidatePositionId) {
                 console.log(`🔍 Candidate ${c.id || c.candidateId} has positionId: ${candidatePositionId}, looking for: ${positionId}`);
               }
               return matches;
             });
-            
+
             console.log(`👥 Found ${positionCandidates.length} candidates for position ${positionId} (from test assignments)`);
             if (positionCandidates.length > 0) {
               console.log("👥 Matched candidates:", positionCandidates.map(c => ({
@@ -1250,7 +1260,7 @@ Good luck with your assessment!`;
             }
           } catch (assignmentsError) {
             console.warn("⚠️ Failed to get candidates with test assignments, trying getAllCandidates:", assignmentsError);
-            
+
             // Fallback to getAllCandidates
             try {
               const organizationId = localStorage.getItem('organizationId') || adminInfo?.organization?.organizationId || null;
@@ -1264,10 +1274,10 @@ Good luck with your assessment!`;
 
               const candidates = candidatesResponse?.content || candidatesResponse?.data || candidatesResponse || [];
               positionCandidates = candidates.filter(c => {
-                const candidatePositionId = c.positionId || 
-                                           c.candidatePosition?.positionId || 
-                                           c.testAssignment?.positionId ||
-                                           c.testAssignments?.[0]?.positionId;
+                const candidatePositionId = c.positionId ||
+                  c.candidatePosition?.positionId ||
+                  c.testAssignment?.positionId ||
+                  c.testAssignments?.[0]?.positionId;
                 return candidatePositionId === positionId;
               });
 
@@ -1280,7 +1290,7 @@ Good luck with your assessment!`;
 
           if (positionCandidates.length > 0) {
             console.log(`✅ Creating/updating assessment summaries for ${positionCandidates.length} candidates`);
-            
+
             // Create assessment summary for each candidate
             for (const candidate of positionCandidates) {
               try {
@@ -1303,7 +1313,7 @@ Good luck with your assessment!`;
                   totalRoundsAssigned: totalRoundsAssigned,
                   totalRoundsCompleted: 0,
                   totalInterviewTime: String(totalDuration),  // Total duration in minutes (as string)
-                  
+
                   // Round 1 - General Questions
                   round1Assigned: round1Assigned,
                   round1Completed: false,
@@ -1311,7 +1321,7 @@ Good luck with your assessment!`;
                   round1TimeTaken: null,
                   round1StartTime: null,
                   round1EndTime: null,
-                  
+
                   // Round 2 - Position Specific Questions
                   round2Assigned: round2Assigned,
                   round2Completed: false,
@@ -1319,7 +1329,7 @@ Good luck with your assessment!`;
                   round2TimeTaken: null,
                   round2StartTime: null,
                   round2EndTime: null,
-                  
+
                   // Round 3 - Coding Questions
                   round3Assigned: round3Assigned,
                   round3Completed: false,
@@ -1327,7 +1337,7 @@ Good luck with your assessment!`;
                   round3TimeTaken: null,
                   round3StartTime: null,
                   round3EndTime: null,
-                  
+
                   // Round 4 - Aptitude Questions
                   round4Assigned: round4Assigned,
                   round4Completed: false,
@@ -1335,10 +1345,10 @@ Good luck with your assessment!`;
                   round4TimeTaken: null,
                   round4StartTime: null,
                   round4EndTime: null,
-                  
+
                   isAssessmentCompleted: false,
                   isReportGenerated: false,
-                  
+
                   // Optional time fields (can be null initially)
                   totalCompletionTime: null,
                   assessmentStartTime: null,
