@@ -181,7 +181,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
   const [filters, setFilters] = useState({
     createdFrom: '',
     createdTo: '',
-    orderBy: 'createdAtDesc',
+    orderBy: 'updatedAtDesc',
     status: [],
     postedBy: 'All Users',
     postedById: '',
@@ -372,7 +372,7 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
     setFilters({
       createdFrom: '',
       createdTo: '',
-      orderBy: 'createdAtDesc',
+      orderBy: 'updatedAtDesc',
       status: [],
       postedBy: 'All Users',
       postedById: '',
@@ -595,10 +595,20 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
 
     // 4. Sorting
     filtered.sort((a, b) => {
-      const dateA = new Date(a.candidateCreatedAt || a.createdAt).getTime();
-      const dateB = new Date(b.candidateCreatedAt || b.createdAt).getTime();
-      if (filters.orderBy === 'createdAtAsc') return dateA - dateB;
-      if (filters.orderBy === 'createdAtDesc') return dateB - dateA;
+      const dateA = new Date(a.updatedAt || a.candidateCreatedAt || a.createdAt).getTime();
+      const dateB = new Date(b.updatedAt || b.candidateCreatedAt || b.createdAt).getTime();
+      if (filters.orderBy === 'updatedAtAsc') return dateA - dateB;
+      if (filters.orderBy === 'updatedAtDesc') return dateB - dateA;
+      if (filters.orderBy === 'createdAtAsc') {
+        const cDateA = new Date(a.candidateCreatedAt || a.createdAt).getTime();
+        const cDateB = new Date(b.candidateCreatedAt || b.createdAt).getTime();
+        return cDateA - cDateB;
+      }
+      if (filters.orderBy === 'createdAtDesc') {
+        const cDateA = new Date(a.candidateCreatedAt || a.createdAt).getTime();
+        const cDateB = new Date(b.candidateCreatedAt || b.createdAt).getTime();
+        return cDateB - cDateA;
+      }
       if (filters.orderBy === 'jobTitleAsc') {
         const titleA = getPositionTitle(a.positionId) || '';
         const titleB = getPositionTitle(b.positionId) || '';
@@ -751,8 +761,10 @@ const CandidateDatabase = ({ adminInfo: propAdminInfo }) => {
                     <div>
                       <span className="block text-gray-900 font-medium mb-1">Order By</span>
                       {[
-                        { label: 'Newest to Oldest', value: 'createdAtDesc' },
-                        { label: 'Oldest to Newest', value: 'createdAtAsc' },
+                        { label: 'Recently Updated', value: 'updatedAtDesc' },
+                        { label: 'Oldest Updated', value: 'updatedAtAsc' },
+                        { label: 'Recently Registered', value: 'createdAtDesc' },
+                        { label: 'Oldest Registered', value: 'createdAtAsc' },
                         { label: 'Title A-Z', value: 'jobTitleAsc' },
                       ].map(({ label, value }) => (
                         <label key={value} className="flex items-center mt-1 text-gray-900 cursor-pointer">

@@ -30,16 +30,16 @@ const CreateQuestionSet = ({ adminInfo }) => {
   const [selectedRound, setSelectedRound] = useState(null); // Track which round's questions are being edited
   const [questions, setQuestions] = useState({
     general: [
-      { id: 1, text: "Tell me about yourself?", prepareTime: "10", answerTime: "2" },
-      { id: 2, text: "Why are you interested in this position?", prepareTime: "10", answerTime: "2" }
+      { id: 1, text: "Tell me about yourself?", prepareTime: "15", answerTime: "60" },
+      { id: 2, text: "Why are you interested in this position?", prepareTime: "15", answerTime: "60" }
     ],
     position: [],
     coding: [],
     aptitude: []
   });
   const [newQuestionText, setNewQuestionText] = useState("");
-  const [newQuestionPrepareTime, setNewQuestionPrepareTime] = useState("10");
-  const [newQuestionAnswerTime, setNewQuestionAnswerTime] = useState("2");
+  const [newQuestionPrepareTime, setNewQuestionPrepareTime] = useState("15");
+  const [newQuestionAnswerTime, setNewQuestionAnswerTime] = useState("60");
   const [shuffleQuestions, setShuffleQuestions] = useState({ general: false, position: false, coding: false, aptitude: false });
 
   // Coding question specific state
@@ -912,7 +912,9 @@ Good luck with your assessment!`;
             id: String(q.id || q.text),
             question: q.text || "",
             answer: "",
-            questionType: "GENERAL"
+            questionType: "GENERAL",
+            timeToPrepare: q.prepareTime || 10,
+            timeToAnswer: q.answerTime || 120
           }))
         },
         positionSpecificQuestions: {
@@ -925,7 +927,9 @@ Good luck with your assessment!`;
             id: String(q.id || q.text),
             question: q.text || "",
             answer: "",
-            questionType: "POSITION_SPECIFIC"
+            questionType: "POSITION_SPECIFIC",
+            timeToPrepare: q.prepareTime || 10,
+            timeToAnswer: q.answerTime || 120
           }))
         },
         codingQuestions: (questions.coding || []).map(q => ({
